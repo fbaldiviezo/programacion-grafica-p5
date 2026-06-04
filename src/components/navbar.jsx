@@ -10,10 +10,10 @@ export default function Navbar({ activeName, onChangeSketch }) {
     const { setTheme } = useTheme()
 
     return (
-        <header className="sticky top-0 z-20 bg-white/95 px-4 py-4 shadow-sm backdrop-blur-sm">
+        <header className="sticky top-0 z-20 border-b border-border/80 bg-background/95 text-foreground px-4 py-4 shadow-sm backdrop-blur-sm transition-colors duration-300">
             <div className="mx-auto flex items-center justify-between gap-4 px-10">
                 <div>
-                    <h1 className="text-xl font-semibold text-slate-950">Programación Gráfica - Juegos Arcade</h1>
+                    <h1 className="text-xl font-semibold text-foreground">Programación Gráfica - Juegos Arcade</h1>
                 </div>
                 <div className="flex items-center gap-2">
                     <DropdownMenu>
@@ -36,12 +36,15 @@ export default function Navbar({ activeName, onChangeSketch }) {
                                 <span className="sr-only">Toggle theme</span>
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                            <DropdownMenuItem onclick={() => setTheme("light")}>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setTheme("light")}>
                                 Light
                             </DropdownMenuItem>
-                            <DropdownMenuItem onclick={() => setTheme("dark")}>
+                            <DropdownMenuItem onClick={() => setTheme("dark")}>
                                 Dark
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setTheme("system")}>
+                                System
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>

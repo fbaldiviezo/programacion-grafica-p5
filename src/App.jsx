@@ -3,7 +3,6 @@ import { useState } from "react"
 import Navbar from './components/navbar'
 import P5Canvas from '@/components/P5Canvas'
 
-import { circleSketch } from "@/components/sketchs/circleSketch";
 import { ThemeProvider } from "@/components/theme-provider"
 
 function App() {
@@ -16,8 +15,8 @@ function App() {
   }
 
   return (
-    <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
-      <div className="min-h-screen min-w-full bg-slate-50 text-slate-950">
+    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+      <div className="min-h-screen min-w-full bg-background text-foreground transition-colors duration-300">
         <Navbar activeName={sketchName} onChangeSketch={handleChangeSketch} />
           <div className="gap-2 flex flex-1 flex-row">  
             <div className="flex flex-1 items-center justify-center mt-10">
