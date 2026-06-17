@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Arcade Pong Standalone</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #0d0d13;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: monospace;
+      color: #fff;
+      overflow: hidden;
+    }
+    #canvas-container {
+      border: 4px solid #3b82f6;
+      box-shadow: 0 0 25px rgba(59, 130, 246, 0.4);
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <script>
+    // ponytail: simple native audio synth
+    let audioCtx = null;
+    function playTone(freq, type, duration) {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        let osc = audioCtx.createOscillator();
+        let gain = audioCtx.createGain();
+        osc.type = type || 'square';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    let state = 'MENU'; // MENU, PLAY, GAMEOVER
+    let gameMode = '1P'; // 1P vs CPU, 2P local
+    let score1 = 0, score2 = 0;
+    const winScore = 7;
+    let winner = '';
+
+    const w = 800, h = 500;
+    let p1 = { y: 200, h: 90, w: 15, x: 20 };
+    let p2 = { y: 200, h: 90, w: 15, x: 765 };
+    let ball = { x: 400, y: 250, vx: 0, vy: 0, r: 8, baseSpeed: 5, speed: 5 };
+    let particles = [];
+    let shake = 0;
+
+    function setup() {
+      let canvas = createCanvas(w, h);
+      canvas.parent('canvas-container');
+    }
+
+    function draw() {
+      // Screen shake
+      if (shake > 0) {
+        translate(random(-shake, shake), random(-shake, shake));
+        shake *= 0.9;
+        if (shake < 0.2) shake = 0;
+      }
+
+      background(15, 15, 23);
+      drawMidLine();
+
+      if (state === 'MENU') {
+        drawMenu();
+      } else if (state === 'PLAY') {
+        updateGame();
+        drawGame();
+      } else if (state === 'GAMEOVER') {
+        drawGameOver();
+      }
+
+      // Draw and update particles
+      updateAndDrawParticles();
+    }
+
+    function drawMidLine() {
+      stroke(255, 255, 255, 30);
+      strokeWeight(2);
+      for (let i = 0; i < h; i += 30) {
+        line(w / 2, i, w / 2, i + 15);
+      }
+    }
+
+    function drawMenu() {
+      textAlign(CENTER, CENTER);
+      fill(59, 130, 246);
+      textSize(36);
+      textStyle(BOLD);
+      text("ARCADE PONG", w / 2, 120);
+
+      fill(200);
+      textSize(18);
+      textStyle(NORMAL);
+      text(`Modo seleccionado: ${gameMode === '1P' ? '1P vs CPU' : '2P LOCAL'} (Presiona M para cambiar)`, w / 2, 220);
+      fill(34, 197, 94);
+      textSize(20);
+      text("Presiona ENTER o ESPACIO para Jugar", w / 2, 280);
+
+      fill(120);
+      textSize(14);
+      text("Controles J1: W / S  |  Controles J2: Flecha Arriba / Flecha Abajo", w / 2, 380);
+    }
+
+    function drawGame() {
+      // Scores
+      fill(255, 255, 255, 70);
+      textSize(64);
+      textAlign(RIGHT, TOP);
+      text(score1, w / 2 - 50, 30);
+      textAlign(LEFT, TOP);
+      text(score2, w / 2 + 50, 30);
+
+      // Paddles
+      fill(34, 197, 94);
+      rect(p1.x, p1.y, p1.w, p1.h, 4);
+      fill(239, 68, 68);
+      rect(p2.x, p2.y, p2.w, p2.h, 4);
+
+      // Ball
+      fill(255);
+      ellipse(ball.x, ball.y, ball.r * 2);
+    }
+
+    function drawGameOver() {
+      textAlign(CENTER, CENTER);
+      fill(239, 68, 68);
+      textSize(36);
+      text(winner, w / 2, 160);
+
+      fill(200);
+      textSize(20);
+      text(`Marcador Final: ${score1} - ${score2}`, w / 2, 220);
+      fill(59, 130, 246);
+      text("Presiona ENTER para volver al menú", w / 2, 300);
+    }
+
+    function updateGame() {
+      // J1 Movement
+      if (keyIsDown(87)) p1.y -= 7; // W
+      if (keyIsDown(83)) p1.y += 7; // S
+      p1.y = constrain(p1.y, 0, h - p1.h);
+
+      // J2 / CPU Movement
+      if (gameMode === '2P') {
+        if (keyIsDown(UP_ARROW)) p2.y -= 7;
+        if (keyIsDown(DOWN_ARROW)) p2.y += 7;
+      } else {
+        // CPU AI tracking ball
+        let targetY = ball.y - p2.h / 2;
+        let diff = targetY - p2.y;
+        if (abs(diff) > 5) {
+          p2.y += sign(diff) * 4.5;
+        }
+      }
+      p2.y = constrain(p2.y, 0, h - p2.h);
+
+      // Ball Physics
+      ball.x += ball.vx;
+      ball.y += ball.vy;
+
+      // Bounce top/bottom walls
+      if (ball.y - ball.r <= 0) {
+        ball.y = ball.r;
+        ball.vy = -ball.vy;
+        playTone(300, 'triangle', 0.08);
+      } else if (ball.y + ball.r >= h) {
+        ball.y = h - ball.r;
+        ball.vy = -ball.vy;
+        playTone(300, 'triangle', 0.08);
+      }
+
+      // Bounce J1 paddle
+      if (ball.vx < 0 && ball.x - ball.r <= p1.x + p1.w && ball.x + ball.r >= p1.x) {
+        if (ball.y >= p1.y && ball.y <= p1.y + p1.h) {
+          let hitFactor = (ball.y - (p1.y + p1.h / 2)) / (p1.h / 2);
+          ball.speed = min(ball.speed * 1.05, 15);
+          ball.vx = ball.speed * cos(hitFactor * PI / 4);
+          ball.vy = ball.speed * sin(hitFactor * PI / 4);
+          ball.x = p1.x + p1.w + ball.r;
+          playTone(440, 'square', 0.1);
+          createHitParticles(ball.x, ball.y, '#22c55e');
+        }
+      }
+
+      // Bounce J2 paddle
+      if (ball.vx > 0 && ball.x + ball.r >= p2.x && ball.x - ball.r <= p2.x + p2.w) {
+        if (ball.y >= p2.y && ball.y <= p2.y + p2.h) {
+          let hitFactor = (ball.y - (p2.y + p2.h / 2)) / (p2.h / 2);
+          ball.speed = min(ball.speed * 1.05, 15);
+          ball.vx = -ball.speed * cos(hitFactor * PI / 4);
+          ball.vy = ball.speed * sin(hitFactor * PI / 4);
+          ball.x = p2.x - ball.r;
+          playTone(440, 'square', 0.1);
+          createHitParticles(ball.x, ball.y, '#ef4444');
+        }
+      }
+
+      // Scores check
+      if (ball.x < 0) {
+        score2++;
+        playTone(180, 'sawtooth', 0.35);
+        shake = 10;
+        checkWin();
+        if (state === 'PLAY') resetBall(1);
+      } else if (ball.x > w) {
+        score1++;
+        playTone(600, 'sine', 0.2);
+        shake = 10;
+        checkWin();
+        if (state === 'PLAY') resetBall(-1);
+      }
+    }
+
+    function sign(val) {
+      return val > 0 ? 1 : val < 0 ? -1 : 0;
+    }
+
+    function resetBall(dir) {
+      ball.x = w / 2;
+      ball.y = h / 2;
+      ball.speed = ball.baseSpeed;
+      let angle = random(-PI / 6, PI / 6);
+      ball.vx = dir * ball.speed * cos(angle);
+      ball.vy = ball.speed * sin(angle);
+    }
+
+    function checkWin() {
+      if (score1 >= winScore) {
+        state = 'GAMEOVER';
+        winner = "¡GANADOR: JUGADOR 1!";
+        playTone(880, 'triangle', 0.4);
+      } else if (score2 >= winScore) {
+        state = 'GAMEOVER';
+        winner = gameMode === '2P' ? "¡GANADOR: JUGADOR 2!" : "¡GANADOR: CPU!";
+        playTone(220, 'triangle', 0.5);
+      }
+    }
+
+    function startGame() {
+      score1 = 0;
+      score2 = 0;
+      state = 'PLAY';
+      resetBall(random() > 0.5 ? 1 : -1);
+    }
+
+    function keyPressed() {
+      if (state === 'MENU') {
+        if (key === 'm' || key === 'M') {
+          gameMode = gameMode === '1P' ? '2P' : '1P';
+          playTone(350, 'sine', 0.05);
+        }
+        if (keyCode === ENTER || key === ' ') {
+          startGame();
+        }
+      } else if (state === 'GAMEOVER') {
+        if (keyCode === ENTER || key === ' ') {
+          state = 'MENU';
+        }
+      }
+    }
+
+    // ponytail: simple particle system
+    function createHitParticles(x, y, color) {
+      for (let i = 0; i < 8; i++) {
+        particles.push({
+          x: x, y: y,
+          vx: random(-3, 3), vy: random(-3, 3),
+          life: 255, color: color
+        });
+      }
+    }
+
+    function updateAndDrawParticles() {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 15;
+        if (p.life <= 0) {
+          particles.splice(i, 1);
+        } else {
+          noStroke();
+          let c = color(p.color);
+          fill(red(c), green(c), blue(c), p.life);
+          ellipse(p.x, p.y, 5);
+        }
+      }
+    }
+  </script>
+</body>
+</html>

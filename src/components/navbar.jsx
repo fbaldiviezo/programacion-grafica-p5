@@ -3,8 +3,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Sun, Moon } from "lucide-react";
 import { useTheme } from "@/components/theme-provider"
 
-import { circleSketch } from "@/components/sketchs/circleSketch";
-import { squareSketch } from "@/components/sketchs/squareSketch";
+import { pongSketch } from "@/components/sketchs/pongSketch";
+import { snakeSketch } from "@/components/sketchs/snakeSketch";
+import { breakoutSketch } from "@/components/sketchs/breakoutSketch";
 
 export default function Navbar({ activeName, onChangeSketch }) {
     const { setTheme } = useTheme()
@@ -17,14 +18,15 @@ export default function Navbar({ activeName, onChangeSketch }) {
                 </div>
                 <div className="flex items-center gap-2">
                     <DropdownMenu>
-                        <DropdownMenuTrigger>
-                            <Button variant="outline" >
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="cursor-pointer">
                                 {activeName || "Selecciona un juego"}
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                            <DropdownMenuItem onClick={() => onChangeSketch(circleSketch, "Efecto del circulo")}>Circulos</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onChangeSketch(squareSketch, "Efecto del cuadrado")}>Cuadrados</DropdownMenuItem>
+                        <DropdownMenuContent className="bg-background text-foreground border border-border">
+                            <DropdownMenuItem className="cursor-pointer" onClick={() => onChangeSketch(pongSketch, "Pong Arcade")}>Pong Classic</DropdownMenuItem>
+                            <DropdownMenuItem className="cursor-pointer" onClick={() => onChangeSketch(snakeSketch, "Neon Snake")}>Neon Snake</DropdownMenuItem>
+                            <DropdownMenuItem className="cursor-pointer" onClick={() => onChangeSketch(breakoutSketch, "Galactic Breakout")}>Galactic Breakout</DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
 
