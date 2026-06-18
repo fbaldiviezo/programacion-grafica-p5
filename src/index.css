@@ -1,13 +1,13 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/inter";
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-    --font-heading: var(--font-sans);
-    --font-sans: 'Inter Variable', sans-serif;
+    --font-heading: 'Orbitron', monospace;
+    --font-sans: 'Rajdhani', sans-serif;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -46,85 +46,467 @@
     --radius-2xl: calc(var(--radius) * 1.8);
     --radius-3xl: calc(var(--radius) * 2.2);
     --radius-4xl: calc(var(--radius) * 2.6);
+
+    /* Arcade Neon Tokens */
+    --neon-cyan: oklch(0.85 0.22 195);
+    --neon-magenta: oklch(0.72 0.28 320);
+    --neon-yellow: oklch(0.92 0.22 95);
+    --neon-green: oklch(0.82 0.22 145);
+    --neon-orange: oklch(0.78 0.24 45);
+    --deep-space: oklch(0.07 0.02 265);
+    --space-mid: oklch(0.11 0.025 265);
+    --space-card: oklch(0.14 0.02 265);
 }
 
+/* ── Light Theme ── */
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
+    --background: oklch(0.96 0.005 265);
+    --foreground: oklch(0.13 0.03 265);
+    --card: oklch(0.99 0.002 265);
+    --card-foreground: oklch(0.13 0.03 265);
+    --popover: oklch(0.99 0.002 265);
+    --popover-foreground: oklch(0.13 0.03 265);
+    --primary: oklch(0.55 0.22 195);
+    --primary-foreground: oklch(0.98 0 0);
+    --secondary: oklch(0.90 0.01 265);
+    --secondary-foreground: oklch(0.13 0.03 265);
+    --muted: oklch(0.90 0.01 265);
+    --muted-foreground: oklch(0.50 0.04 265);
+    --accent: oklch(0.55 0.22 195);
+    --accent-foreground: oklch(0.98 0 0);
+    --destructive: oklch(0.65 0.22 27);
+    --border: oklch(0.82 0.015 265);
+    --input: oklch(0.82 0.015 265);
+    --ring: oklch(0.55 0.22 195);
+    --chart-1: oklch(0.55 0.22 195);
+    --chart-2: oklch(0.72 0.28 320);
+    --chart-3: oklch(0.82 0.22 145);
+    --chart-4: oklch(0.78 0.24 45);
+    --chart-5: oklch(0.92 0.22 95);
+    --radius: 0.5rem;
+    --sidebar: oklch(0.93 0.01 265);
+    --sidebar-foreground: oklch(0.13 0.03 265);
+    --sidebar-primary: oklch(0.55 0.22 195);
+    --sidebar-primary-foreground: oklch(0.98 0 0);
+    --sidebar-accent: oklch(0.90 0.01 265);
+    --sidebar-accent-foreground: oklch(0.13 0.03 265);
+    --sidebar-border: oklch(0.82 0.015 265);
+    --sidebar-ring: oklch(0.55 0.22 195);
 }
 
+/* ── Dark / Arcade Neon Theme ── */
 .dark {
-    --background: oklch(0.143 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+    --background: oklch(0.07 0.02 265);
+    --foreground: oklch(0.94 0.015 195);
+    --card: oklch(0.11 0.025 265);
+    --card-foreground: oklch(0.94 0.015 195);
+    --popover: oklch(0.11 0.025 265);
+    --popover-foreground: oklch(0.94 0.015 195);
+    --primary: oklch(0.85 0.22 195);
+    --primary-foreground: oklch(0.07 0.02 265);
+    --secondary: oklch(0.15 0.03 265);
+    --secondary-foreground: oklch(0.85 0.22 195);
+    --muted: oklch(0.15 0.03 265);
+    --muted-foreground: oklch(0.60 0.06 265);
+    --accent: oklch(0.72 0.28 320);
+    --accent-foreground: oklch(0.07 0.02 265);
+    --destructive: oklch(0.70 0.22 27);
+    --border: oklch(0.85 0.22 195 / 18%);
+    --input: oklch(0.85 0.22 195 / 12%);
+    --ring: oklch(0.85 0.22 195 / 60%);
+    --chart-1: oklch(0.85 0.22 195);
+    --chart-2: oklch(0.72 0.28 320);
+    --chart-3: oklch(0.82 0.22 145);
+    --chart-4: oklch(0.78 0.24 45);
+    --chart-5: oklch(0.92 0.22 95);
+    --sidebar: oklch(0.09 0.025 265);
+    --sidebar-foreground: oklch(0.94 0.015 195);
+    --sidebar-primary: oklch(0.85 0.22 195);
+    --sidebar-primary-foreground: oklch(0.07 0.02 265);
+    --sidebar-accent: oklch(0.15 0.03 265);
+    --sidebar-accent-foreground: oklch(0.85 0.22 195);
+    --sidebar-border: oklch(0.85 0.22 195 / 15%);
+    --sidebar-ring: oklch(0.85 0.22 195 / 60%);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    }
+    box-sizing: border-box;
+  }
   body {
     @apply bg-background text-foreground;
-    }
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px;
+    letter-spacing: 0.02em;
+  }
   html {
     @apply font-sans;
-    }
+    scroll-behavior: smooth;
+  }
+  h1, h2, h3 {
+    font-family: 'Orbitron', monospace;
+    letter-spacing: 0.08em;
+  }
 }
+
+/* ══════════════════════════════════════════
+   ARCADE BACKGROUND — grid + noise overlay
+   ══════════════════════════════════════════ */
+.dark body,
+.dark #root {
+  background-image:
+    linear-gradient(oklch(0.85 0.22 195 / 4%) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.85 0.22 195 / 4%) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: center center;
+}
+
+/* ══════════════════════════════════════════
+   GLOW UTILITIES
+   ══════════════════════════════════════════ */
+.glow-cyan {
+  text-shadow:
+    0 0 8px oklch(0.85 0.22 195 / 80%),
+    0 0 20px oklch(0.85 0.22 195 / 50%),
+    0 0 40px oklch(0.85 0.22 195 / 30%);
+}
+.glow-magenta {
+  text-shadow:
+    0 0 8px oklch(0.72 0.28 320 / 80%),
+    0 0 20px oklch(0.72 0.28 320 / 50%),
+    0 0 40px oklch(0.72 0.28 320 / 25%);
+}
+.glow-yellow {
+  text-shadow:
+    0 0 8px oklch(0.92 0.22 95 / 80%),
+    0 0 20px oklch(0.92 0.22 95 / 50%),
+    0 0 40px oklch(0.92 0.22 95 / 25%);
+}
+.box-glow-cyan {
+  box-shadow:
+    0 0 12px oklch(0.85 0.22 195 / 40%),
+    0 0 30px oklch(0.85 0.22 195 / 20%),
+    inset 0 0 12px oklch(0.85 0.22 195 / 8%);
+}
+.box-glow-magenta {
+  box-shadow:
+    0 0 12px oklch(0.72 0.28 320 / 40%),
+    0 0 30px oklch(0.72 0.28 320 / 20%),
+    inset 0 0 12px oklch(0.72 0.28 320 / 8%);
+}
+
+/* ══════════════════════════════════════════
+   NAVBAR — dark mode arcade bar
+   ══════════════════════════════════════════ */
+.dark .arcade-navbar {
+  background: oklch(0.09 0.025 265 / 92%);
+  border-bottom: 1px solid oklch(0.85 0.22 195 / 25%);
+  box-shadow:
+    0 1px 0 oklch(0.85 0.22 195 / 15%),
+    0 4px 20px oklch(0.07 0.02 265 / 80%);
+  backdrop-filter: blur(16px) saturate(180%);
+}
+.arcade-navbar {
+  transition: background 0.3s, box-shadow 0.3s;
+}
+
+/* Brand title */
+.dark .arcade-brand {
+  font-family: 'Orbitron', monospace;
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.12em;
+  color: oklch(0.85 0.22 195);
+  text-shadow:
+    0 0 10px oklch(0.85 0.22 195 / 70%),
+    0 0 25px oklch(0.85 0.22 195 / 40%);
+}
+.arcade-brand {
+  font-family: 'Orbitron', monospace;
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.12em;
+}
+
+/* ══════════════════════════════════════════
+   BUTTONS — neon outline style
+   ══════════════════════════════════════════ */
+.dark .arcade-btn {
+  background: transparent;
+  border: 1px solid oklch(0.85 0.22 195 / 50%);
+  color: oklch(0.85 0.22 195);
+  font-family: 'Orbitron', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 8px oklch(0.85 0.22 195 / 20%);
+}
+.dark .arcade-btn:hover {
+  background: oklch(0.85 0.22 195 / 12%);
+  border-color: oklch(0.85 0.22 195 / 90%);
+  box-shadow:
+    0 0 16px oklch(0.85 0.22 195 / 50%),
+    0 0 32px oklch(0.85 0.22 195 / 25%);
+  color: oklch(0.95 0.18 195);
+}
+.dark .arcade-btn-icon {
+  background: transparent;
+  border: 1px solid oklch(0.72 0.28 320 / 50%);
+  color: oklch(0.72 0.28 320);
+  transition: all 0.2s ease;
+  box-shadow: 0 0 8px oklch(0.72 0.28 320 / 15%);
+}
+.dark .arcade-btn-icon:hover {
+  background: oklch(0.72 0.28 320 / 12%);
+  border-color: oklch(0.72 0.28 320);
+  box-shadow:
+    0 0 16px oklch(0.72 0.28 320 / 50%),
+    0 0 32px oklch(0.72 0.28 320 / 25%);
+}
+
+/* CTA button — centered menu selector */
+.dark .arcade-btn-primary {
+  background: oklch(0.85 0.22 195 / 12%);
+  border: 1px solid oklch(0.85 0.22 195 / 70%);
+  color: oklch(0.90 0.20 195);
+  font-family: 'Orbitron', monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transition: all 0.25s ease;
+  box-shadow:
+    0 0 14px oklch(0.85 0.22 195 / 30%),
+    0 0 30px oklch(0.85 0.22 195 / 12%);
+}
+.dark .arcade-btn-primary:hover {
+  background: oklch(0.85 0.22 195 / 22%);
+  border-color: oklch(0.85 0.22 195);
+  color: oklch(0.97 0.15 195);
+  box-shadow:
+    0 0 22px oklch(0.85 0.22 195 / 60%),
+    0 0 50px oklch(0.85 0.22 195 / 25%);
+  transform: translateY(-1px);
+}
+.arcade-btn-primary {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transition: all 0.25s ease;
+}
+.arcade-btn-primary:hover {
+  transform: translateY(-1px);
+}
+
+/* Back button — navbar, returns to main menu */
+.dark .arcade-btn-back {
+  background: transparent;
+  border: 1px solid oklch(0.72 0.28 320 / 45%);
+  color: oklch(0.72 0.28 320);
+  font-family: 'Orbitron', monospace;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 8px oklch(0.72 0.28 320 / 15%);
+}
+.dark .arcade-btn-back:hover {
+  background: oklch(0.72 0.28 320 / 12%);
+  border-color: oklch(0.72 0.28 320);
+  color: oklch(0.88 0.22 320);
+  box-shadow:
+    0 0 16px oklch(0.72 0.28 320 / 50%),
+    0 0 32px oklch(0.72 0.28 320 / 20%);
+}
+.arcade-btn-back {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+}
+
+/* ══════════════════════════════════════════
+   CANVAS CONTAINER
+   ══════════════════════════════════════════ */
+.dark .arcade-canvas-wrap {
+  border: 1px solid oklch(0.85 0.22 195 / 30%);
+  border-radius: 8px;
+  box-shadow:
+    0 0 20px oklch(0.85 0.22 195 / 25%),
+    0 0 60px oklch(0.85 0.22 195 / 10%),
+    0 8px 40px oklch(0.07 0.02 265 / 60%);
+  overflow: hidden;
+  position: relative;
+}
+/* Scanline overlay */
+.dark .arcade-canvas-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    oklch(0.07 0.02 265 / 8%) 2px,
+    oklch(0.07 0.02 265 / 8%) 4px
+  );
+  pointer-events: none;
+  z-index: 10;
+}
+.arcade-canvas-wrap {
+  border: 1px solid oklch(0.7 0 0 / 30%);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* ══════════════════════════════════════════
+   EMPTY STATE — "Insert Coin" prompt
+   ══════════════════════════════════════════ */
+.arcade-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 4rem 2rem;
+  animation: fadeIn 0.6s ease both;
+}
+.dark .arcade-empty-icon {
+  font-size: 5rem;
+  filter: drop-shadow(0 0 20px oklch(0.72 0.28 320 / 60%));
+  animation: pulse-icon 2.5s ease-in-out infinite;
+}
+@keyframes pulse-icon {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 20px oklch(0.72 0.28 320 / 60%)); }
+  50% { transform: scale(1.08); filter: drop-shadow(0 0 30px oklch(0.72 0.28 320 / 90%)); }
+}
+.dark .arcade-empty-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.8rem;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  color: oklch(0.85 0.22 195);
+  text-shadow:
+    0 0 10px oklch(0.85 0.22 195 / 80%),
+    0 0 25px oklch(0.85 0.22 195 / 40%);
+}
+.dark .arcade-empty-sub {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: oklch(0.60 0.06 265);
+  letter-spacing: 0.05em;
+}
+.arcade-empty-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.8rem;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+}
+
+/* ══════════════════════════════════════════
+   DROPDOWN — neon menu
+   ══════════════════════════════════════════ */
+.dark [data-radix-popper-content-wrapper] [role="menu"],
+.dark [data-radix-popper-content-wrapper] [role="listbox"] {
+  background: oklch(0.10 0.025 265);
+  border: 1px solid oklch(0.85 0.22 195 / 30%);
+  box-shadow:
+    0 0 20px oklch(0.85 0.22 195 / 20%),
+    0 8px 32px oklch(0.07 0.02 265 / 80%);
+}
+.dark [role="menuitem"] {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  color: oklch(0.80 0.05 265);
+  transition: all 0.15s;
+}
+.dark [role="menuitem"]:hover,
+.dark [role="menuitem"]:focus {
+  background: oklch(0.85 0.22 195 / 10%);
+  color: oklch(0.85 0.22 195);
+  text-shadow: 0 0 8px oklch(0.85 0.22 195 / 60%);
+}
+
+/* ══════════════════════════════════════════
+   GAME BADGE (active game indicator)
+   ══════════════════════════════════════════ */
+.dark .game-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: oklch(0.85 0.22 195 / 10%);
+  border: 1px solid oklch(0.85 0.22 195 / 35%);
+  border-radius: 4px;
+  padding: 0.15rem 0.75rem;
+  font-family: 'Orbitron', monospace;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: oklch(0.85 0.22 195);
+}
+.dark .game-badge::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: oklch(0.82 0.22 145);
+  box-shadow: 0 0 6px oklch(0.82 0.22 145);
+  animation: blink-dot 1.2s ease-in-out infinite;
+}
+@keyframes blink-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* ══════════════════════════════════════════
+   ANIMATIONS
+   ══════════════════════════════════════════ */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes glitch-flicker {
+  0%, 96%, 100% { opacity: 1; }
+  97% { opacity: 0.85; transform: translateX(1px); }
+  98% { opacity: 0.9; transform: translateX(-1px); }
+  99% { opacity: 1; transform: translateX(0); }
+}
+.dark .arcade-brand {
+  animation: glitch-flicker 6s ease-in-out infinite;
+}
+
+/* ══════════════════════════════════════════
+   CORNER DECORATIONS for canvas
+   ══════════════════════════════════════════ */
+.dark .canvas-corner {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  z-index: 20;
+}
+.dark .canvas-corner::before,
+.dark .canvas-corner::after {
+  content: '';
+  position: absolute;
+  background: oklch(0.85 0.22 195);
+  box-shadow: 0 0 6px oklch(0.85 0.22 195 / 80%);
+}
+.dark .canvas-corner::before { width: 100%; height: 2px; top: 0; }
+.dark .canvas-corner::after  { width: 2px; height: 100%; top: 0; }
+
+.dark .canvas-corner.tl { top: 0; left: 0; }
+.dark .canvas-corner.tr { top: 0; right: 0; transform: scaleX(-1); }
+.dark .canvas-corner.bl { bottom: 0; left: 0; transform: scaleY(-1); }
+.dark .canvas-corner.br { bottom: 0; right: 0; transform: scale(-1); }
