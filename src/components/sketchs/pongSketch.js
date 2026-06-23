@@ -79,7 +79,7 @@ export const pongSketch = (p) => {
     p.text(`Modo: ${gameMode === '1P' ? '1 Jugador vs CPU' : '2 Jugadores Local'} (Presiona M para cambiar)`, w / 2, 220);
     p.fill(34, 197, 94);
     p.textSize(20);
-    p.text("Presiona ENTER o ESPACIO para Jugar", w / 2, 280);
+    p.text("Presiona ESPACIO para Jugar", w / 2, 280);
 
     p.fill(120);
     p.textSize(14);

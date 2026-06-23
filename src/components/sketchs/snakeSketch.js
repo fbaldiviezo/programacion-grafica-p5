@@ -78,11 +78,11 @@ export const snakeSketch = (p) => {
     
     p.fill(34, 197, 94);
     p.textSize(20);
-    p.text("Presiona ENTER o ESPACIO para Jugar", w / 2, 280);
+    p.text("Presiona ESPACIO para Jugar", w / 2, 280);
 
     p.fill(120);
     p.textSize(14);
-    p.text("Controles: Flechas o teclas WASD", w / 2, 380);
+    p.text("Controles: teclas WASD", w / 2, 380);
   }
 
   function drawGame() {

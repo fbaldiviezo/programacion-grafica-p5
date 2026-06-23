@@ -1,0 +1,3562 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.gitignore
+components.json
+eslint.config.js
+games/breakout/index.html
+games/pong/index.html
+games/snake/index.html
+index.html
+jsconfig.json
+package.json
+public/favicon.svg
+public/icons.svg
+README.md
+src/App.jsx
+src/assets/hero.png
+src/assets/react.svg
+src/assets/vite.svg
+src/components/navbar.jsx
+src/components/P5Canvas.jsx
+src/components/sketchs/breakoutSketch.js
+src/components/sketchs/circleSketch.js
+src/components/sketchs/pongSketch.js
+src/components/sketchs/snakeSketch.js
+src/components/sketchs/squareSketch.js
+src/components/theme-provider.jsx
+src/components/ui/button.jsx
+src/components/ui/dropdown-menu.jsx
+src/index.css
+src/lib/utils.js
+src/main.jsx
+vite.config.js
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="components.json">
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "base-vega",
+  "rsc": false,
+  "tsx": false,
+  "tailwind": {
+    "config": "",
+    "css": "src/index.css",
+    "baseColor": "neutral",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "iconLibrary": "lucide",
+  "rtl": false,
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
+  },
+  "menuColor": "default",
+  "menuAccent": "subtle",
+  "registries": {}
+}
+</file>
+
+<file path="eslint.config.js">
+import js from '@eslint/js'
+import globals from 'globals'
+import reactHooks from 'eslint-plugin-react-hooks'
+import reactRefresh from 'eslint-plugin-react-refresh'
+import { defineConfig, globalIgnores } from 'eslint/config'
+
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{js,jsx}'],
+    extends: [
+      js.configs.recommended,
+      reactHooks.configs.flat.recommended,
+      reactRefresh.configs.vite,
+    ],
+    languageOptions: {
+      globals: globals.browser,
+      parserOptions: { ecmaFeatures: { jsx: true } },
+    },
+  },
+])
+</file>
+
+<file path="games/breakout/index.html">
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Arcade Breakout Standalone</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #0f0a14;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: monospace;
+      color: #fff;
+      overflow: hidden;
+    }
+    #canvas-container {
+      border: 4px solid #a855f7;
+      box-shadow: 0 0 25px rgba(168, 85, 247, 0.4);
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <script>
+    // ponytail: simple native audio synth
+    let audioCtx = null;
+    function playTone(freq, type, duration) {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        let osc = audioCtx.createOscillator();
+        let gain = audioCtx.createGain();
+        osc.type = type || 'sine';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    let state = 'MENU'; // MENU, PLAY, READY, GAMEOVER, VICTORY
+    let score = 0, lives = 3;
+
+    const w = 800, h = 500;
+    
+    // Paddle
+    let paddle = { x: 350, y: 460, w: 100, baseW: 100, h: 15 };
+    
+    // Ball array
+    let balls = [];
+    
+    // Bricks
+    let bricks = [];
+    const cols = 10, rows = 4;
+    const brickW = 70, brickH = 20;
+    const paddingX = 8, paddingY = 8;
+    const gridOffsetY = 60, gridOffsetX = 12;
+
+    // Powerups
+    let powerups = [];
+    let powerupTimer = 0;
+    let activePowerup = null; // 'WIDE'
+    
+    // Particles
+    let particles = [];
+    let shake = 0;
+
+    function setup() {
+      let canvas = createCanvas(w, h);
+      canvas.parent('canvas-container');
+    }
+
+    function draw() {
+      // Screen shake
+      if (shake > 0) {
+        translate(random(-shake, shake), random(-shake, shake));
+        shake *= 0.9;
+        if (shake < 0.2) shake = 0;
+      }
+
+      background(15, 10, 20);
+      drawGridBackground();
+
+      if (state === 'MENU') {
+        drawMenu();
+      } else {
+        if (state === 'PLAY') {
+          updateGame();
+        } else if (state === 'READY') {
+          updatePaddleOnly();
+        }
+        drawGame();
+      }
+
+      updateAndDrawParticles();
+    }
+
+    function drawGridBackground() {
+      stroke(147, 51, 234, 15);
+      strokeWeight(1);
+      for (let x = 0; x < w; x += 40) {
+        line(x, 0, x, h);
+      }
+      for (let y = 0; y < h; y += 40) {
+        line(0, y, w, y);
+      }
+    }
+
+    function drawMenu() {
+      textAlign(CENTER, CENTER);
+      fill(168, 85, 247);
+      textSize(36);
+      textStyle(BOLD);
+      text("GALACTIC BREAKOUT", w / 2, 140);
+
+      fill(200);
+      textSize(20);
+      textStyle(NORMAL);
+      text("Presiona ENTER o ESPACIO para Iniciar", w / 2, 250);
+
+      fill(120);
+      textSize(14);
+      text("Mueve el mouse para controlar la paleta  |  ESPACIO para lanzar la bola", w / 2, 380);
+    }
+
+    function drawGame() {
+      // Bricks
+      for (let b of bricks) {
+        if (!b.active) continue;
+        let c = color(168, 85, 247);
+        if (b.row === 0) c = color(239, 68, 68); // Red
+        else if (b.row === 1) c = color(249, 115, 22); // Orange
+        else if (b.row === 2) c = color(34, 197, 94); // Green
+        else c = color(6, 182, 212); // Cyan
+
+        fill(c);
+        noStroke();
+        rect(b.x, b.y, brickW, brickH, 3);
+      }
+
+      // Paddle
+      fill(168, 85, 247);
+      rect(paddle.x, paddle.y, paddle.w, paddle.h, 6);
+
+      // Balls
+      fill(255);
+      for (let b of balls) {
+        ellipse(b.x, b.y, b.r * 2);
+      }
+
+      // Powerups
+      for (let p of powerups) {
+        let pc = p.type === 'WIDE' ? color(34, 197, 94) : color(6, 182, 212);
+        fill(pc);
+        rect(p.x - 10, p.y - 8, 20, 16, 6);
+        fill(0);
+        textAlign(CENTER, CENTER);
+        textSize(10);
+        textStyle(BOLD);
+        text(p.type === 'WIDE' ? 'W' : 'M', p.x, p.y);
+      }
+      textStyle(NORMAL);
+
+      // HUD
+      fill(255, 255, 255, 200);
+      textSize(16);
+      textAlign(LEFT, TOP);
+      text(`PUNTOS: ${score}`, 20, 20);
+
+      textAlign(RIGHT, TOP);
+      let livesStr = "";
+      for (let i = 0; i < lives; i++) livesStr += "♥ ";
+      fill(236, 72, 153);
+      text(`VIDAS: ${livesStr}`, w - 20, 20);
+
+      if (state === 'READY') {
+        fill(255);
+        textAlign(CENTER, CENTER);
+        textSize(18);
+        text("Presiona ESPACIO para lanzar la bola", w / 2, h / 2 + 50);
+      } else if (state === 'GAMEOVER') {
+        drawOverlay("GAME OVER", color(239, 68, 68));
+      } else if (state === 'VICTORY') {
+        drawOverlay("¡VICTORIA GALÁCTICA!", color(34, 197, 94));
+      }
+    }
+
+    function drawOverlay(title, col) {
+      fill(0, 0, 0, 180);
+      rect(0, 0, w, h);
+      textAlign(CENTER, CENTER);
+      fill(col);
+      textSize(36);
+      textStyle(BOLD);
+      text(title, w / 2, h / 2 - 30);
+      fill(200);
+      textSize(18);
+      textStyle(NORMAL);
+      text(`Puntuación final: ${score} pts`, w / 2, h / 2 + 20);
+      text("Presiona ENTER para volver al menú principal", w / 2, h / 2 + 70);
+    }
+
+    function updatePaddleOnly() {
+      // Mouse control
+      if (mouseX > 0 && mouseX < w) {
+        paddle.x = constrain(mouseX - paddle.w/2, 0, w - paddle.w);
+      }
+      // Ball positions with paddle
+      if (balls.length > 0) {
+        balls[0].x = paddle.x + paddle.w / 2;
+        balls[0].y = paddle.y - balls[0].r - 2;
+      }
+    }
+
+    function updateGame() {
+      // Mouse control
+      if (mouseX > 0 && mouseX < w) {
+        paddle.x = constrain(mouseX - paddle.w/2, 0, w - paddle.w);
+      }
+
+      // Powerup Timers
+      if (powerupTimer > 0) {
+        powerupTimer--;
+        if (powerupTimer <= 0) {
+          paddle.w = paddle.baseW;
+          activePowerup = null;
+        }
+      }
+
+      // Balls updates
+      for (let i = balls.length - 1; i >= 0; i--) {
+        let b = balls[i];
+        b.x += b.vx;
+        b.y += b.vy;
+
+        // Bounces Left/Right Walls
+        if (b.x - b.r <= 0) {
+          b.x = b.r;
+          b.vx = -b.vx;
+          playTone(320, 'sine', 0.05);
+        } else if (b.x + b.r >= w) {
+          b.x = w - b.r;
+          b.vx = -b.vx;
+          playTone(320, 'sine', 0.05);
+        }
+
+        // Bounce Top Wall
+        if (b.y - b.r <= 0) {
+          b.y = b.r;
+          b.vy = -b.vy;
+          playTone(320, 'sine', 0.05);
+        }
+
+        // Out bottom
+        if (b.y - b.r > h) {
+          balls.splice(i, 1);
+          continue;
+        }
+
+        // Bounce Paddle
+        if (b.vy > 0 && b.y + b.r >= paddle.y && b.y - b.r <= paddle.y + paddle.h) {
+          if (b.x >= paddle.x && b.x <= paddle.x + paddle.w) {
+            let hitFactor = (b.x - (paddle.x + paddle.w/2)) / (paddle.w/2);
+            let angle = hitFactor * PI / 3.5;
+            b.vx = b.speed * sin(angle);
+            b.vy = -b.speed * cos(angle);
+            b.y = paddle.y - b.r;
+            playTone(400, 'triangle', 0.08);
+          }
+        }
+
+        // Bricks Collision
+        checkBrickCollision(b);
+      }
+
+      // If all balls lost
+      if (balls.length === 0) {
+        loseLife();
+      }
+
+      // Powerups fall
+      for (let i = powerups.length - 1; i >= 0; i--) {
+        let p = powerups[i];
+        p.y += 3;
+        
+        // Grab by paddle
+        if (p.y + 8 >= paddle.y && p.y - 8 <= paddle.y + paddle.h) {
+          if (p.x >= paddle.x && p.x <= paddle.x + paddle.w) {
+            applyPowerup(p.type);
+            powerups.splice(i, 1);
+            continue;
+          }
+        }
+        
+        if (p.y > h + 15) {
+          powerups.splice(i, 1);
+        }
+      }
+
+      // Victory check
+      let activeBricks = bricks.filter(br => br.active);
+      if (activeBricks.length === 0) {
+        state = 'VICTORY';
+        playTone(700, 'sine', 0.4);
+      }
+    }
+
+    function checkBrickCollision(ball) {
+      for (let b of bricks) {
+        if (!b.active) continue;
+
+        // Simple bounding box checks
+        if (ball.x + ball.r >= b.x && ball.x - ball.r <= b.x + brickW &&
+            ball.y + ball.r >= b.y && ball.y - ball.r <= b.y + brickH) {
+          
+          ball.vy = -ball.vy;
+          b.active = false;
+          score += 10;
+          shake = 4;
+          playTone(500, 'square', 0.1);
+          createBrickExplosion(b.x + brickW/2, b.y + brickH/2);
+
+          // Drop powerups
+          if (random() < 0.15) {
+            powerups.push({
+              x: b.x + brickW/2,
+              y: b.y + brickH/2,
+              type: random() > 0.5 ? 'WIDE' : 'MULTI'
+            });
+          }
+          break;
+        }
+      }
+    }
+
+    function applyPowerup(type) {
+      playTone(600, 'sine', 0.2);
+      if (type === 'WIDE') {
+        paddle.w = paddle.baseW * 1.5;
+        powerupTimer = 480; // 8 seconds
+        activePowerup = 'WIDE';
+      } else if (type === 'MULTI') {
+        // Spawn 2 extra balls
+        if (balls.length > 0) {
+          let baseBall = balls[0];
+          balls.push({
+            x: baseBall.x, y: baseBall.y,
+            vx: -baseBall.vx, vy: baseBall.vy,
+            r: baseBall.r, speed: baseBall.speed
+          });
+          balls.push({
+            x: baseBall.x, y: baseBall.y,
+            vx: baseBall.vx * 0.5, vy: -baseBall.vy,
+            r: baseBall.r, speed: baseBall.speed
+          });
+        }
+      }
+    }
+
+    function loseLife() {
+      lives--;
+      powerups = [];
+      paddle.w = paddle.baseW;
+      activePowerup = null;
+      powerupTimer = 0;
+
+      if (lives <= 0) {
+        state = 'GAMEOVER';
+        playTone(180, 'sawtooth', 0.5);
+      } else {
+        playTone(200, 'sawtooth', 0.25);
+        state = 'READY';
+        balls = [{ x: w/2, y: h - 50, vx: 0, vy: 0, r: 8, speed: 6 }];
+      }
+    }
+
+    function initGame() {
+      score = 0;
+      lives = 3;
+      powerups = [];
+      paddle.w = paddle.baseW;
+      
+      // Load bricks grid
+      bricks = [];
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          bricks.push({
+            x: gridOffsetX + c * (brickW + paddingX),
+            y: gridOffsetY + r * (brickH + paddingY),
+            row: r,
+            active: true
+          });
+        }
+      }
+
+      // Ball
+      balls = [{ x: w/2, y: h - 50, vx: 0, vy: 0, r: 8, speed: 6 }];
+      
+      state = 'READY';
+    }
+
+    function launchBall() {
+      if (state !== 'READY' || balls.length === 0) return;
+      let angle = random(-PI/6, PI/6);
+      balls[0].vx = balls[0].speed * sin(angle);
+      balls[0].vy = -balls[0].speed * cos(angle);
+      state = 'PLAY';
+      playTone(400, 'sine', 0.1);
+    }
+
+    function keyPressed() {
+      if (state === 'MENU') {
+        if (keyCode === ENTER || key === ' ') {
+          initGame();
+        }
+      } else if (state === 'READY') {
+        if (key === ' ' || keyCode === ENTER) {
+          launchBall();
+        }
+      } else if (state === 'GAMEOVER' || state === 'VICTORY') {
+        if (keyCode === ENTER || key === ' ') {
+          state = 'MENU';
+        }
+      }
+    }
+
+    // ponytail: simple particle system
+    function createBrickExplosion(x, y) {
+      for (let i = 0; i < 10; i++) {
+        particles.push({
+          x: x, y: y,
+          vx: random(-4, 4), vy: random(-4, 4),
+          life: 255, color: '#a855f7'
+        });
+      }
+    }
+
+    function updateAndDrawParticles() {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 15;
+        if (p.life <= 0) {
+          particles.splice(i, 1);
+        } else {
+          noStroke();
+          let c = color(p.color);
+          fill(red(c), green(c), blue(c), p.life);
+          ellipse(p.x, p.y, 5);
+        }
+      }
+    }
+  </script>
+</body>
+</html>
+</file>
+
+<file path="games/pong/index.html">
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Arcade Pong Standalone</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #0d0d13;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: monospace;
+      color: #fff;
+      overflow: hidden;
+    }
+    #canvas-container {
+      border: 4px solid #3b82f6;
+      box-shadow: 0 0 25px rgba(59, 130, 246, 0.4);
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <script>
+    // ponytail: simple native audio synth
+    let audioCtx = null;
+    function playTone(freq, type, duration) {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        let osc = audioCtx.createOscillator();
+        let gain = audioCtx.createGain();
+        osc.type = type || 'square';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    let state = 'MENU'; // MENU, PLAY, GAMEOVER
+    let gameMode = '1P'; // 1P vs CPU, 2P local
+    let score1 = 0, score2 = 0;
+    const winScore = 7;
+    let winner = '';
+
+    const w = 800, h = 500;
+    let p1 = { y: 200, h: 90, w: 15, x: 20 };
+    let p2 = { y: 200, h: 90, w: 15, x: 765 };
+    let ball = { x: 400, y: 250, vx: 0, vy: 0, r: 8, baseSpeed: 5, speed: 5 };
+    let particles = [];
+    let shake = 0;
+
+    function setup() {
+      let canvas = createCanvas(w, h);
+      canvas.parent('canvas-container');
+    }
+
+    function draw() {
+      // Screen shake
+      if (shake > 0) {
+        translate(random(-shake, shake), random(-shake, shake));
+        shake *= 0.9;
+        if (shake < 0.2) shake = 0;
+      }
+
+      background(15, 15, 23);
+      drawMidLine();
+
+      if (state === 'MENU') {
+        drawMenu();
+      } else if (state === 'PLAY') {
+        updateGame();
+        drawGame();
+      } else if (state === 'GAMEOVER') {
+        drawGameOver();
+      }
+
+      // Draw and update particles
+      updateAndDrawParticles();
+    }
+
+    function drawMidLine() {
+      stroke(255, 255, 255, 30);
+      strokeWeight(2);
+      for (let i = 0; i < h; i += 30) {
+        line(w / 2, i, w / 2, i + 15);
+      }
+    }
+
+    function drawMenu() {
+      textAlign(CENTER, CENTER);
+      fill(59, 130, 246);
+      textSize(36);
+      textStyle(BOLD);
+      text("ARCADE PONG", w / 2, 120);
+
+      fill(200);
+      textSize(18);
+      textStyle(NORMAL);
+      text(`Modo seleccionado: ${gameMode === '1P' ? '1P vs CPU' : '2P LOCAL'} (Presiona M para cambiar)`, w / 2, 220);
+      fill(34, 197, 94);
+      textSize(20);
+      text("Presiona ENTER o ESPACIO para Jugar", w / 2, 280);
+
+      fill(120);
+      textSize(14);
+      text("Controles J1: W / S  |  Controles J2: Flecha Arriba / Flecha Abajo", w / 2, 380);
+    }
+
+    function drawGame() {
+      // Scores
+      fill(255, 255, 255, 70);
+      textSize(64);
+      textAlign(RIGHT, TOP);
+      text(score1, w / 2 - 50, 30);
+      textAlign(LEFT, TOP);
+      text(score2, w / 2 + 50, 30);
+
+      // Paddles
+      fill(34, 197, 94);
+      rect(p1.x, p1.y, p1.w, p1.h, 4);
+      fill(239, 68, 68);
+      rect(p2.x, p2.y, p2.w, p2.h, 4);
+
+      // Ball
+      fill(255);
+      ellipse(ball.x, ball.y, ball.r * 2);
+    }
+
+    function drawGameOver() {
+      textAlign(CENTER, CENTER);
+      fill(239, 68, 68);
+      textSize(36);
+      text(winner, w / 2, 160);
+
+      fill(200);
+      textSize(20);
+      text(`Marcador Final: ${score1} - ${score2}`, w / 2, 220);
+      fill(59, 130, 246);
+      text("Presiona ENTER para volver al menú", w / 2, 300);
+    }
+
+    function updateGame() {
+      // J1 Movement
+      if (keyIsDown(87)) p1.y -= 7; // W
+      if (keyIsDown(83)) p1.y += 7; // S
+      p1.y = constrain(p1.y, 0, h - p1.h);
+
+      // J2 / CPU Movement
+      if (gameMode === '2P') {
+        if (keyIsDown(UP_ARROW)) p2.y -= 7;
+        if (keyIsDown(DOWN_ARROW)) p2.y += 7;
+      } else {
+        // CPU AI tracking ball
+        let targetY = ball.y - p2.h / 2;
+        let diff = targetY - p2.y;
+        if (abs(diff) > 5) {
+          p2.y += sign(diff) * 4.5;
+        }
+      }
+      p2.y = constrain(p2.y, 0, h - p2.h);
+
+      // Ball Physics
+      ball.x += ball.vx;
+      ball.y += ball.vy;
+
+      // Bounce top/bottom walls
+      if (ball.y - ball.r <= 0) {
+        ball.y = ball.r;
+        ball.vy = -ball.vy;
+        playTone(300, 'triangle', 0.08);
+      } else if (ball.y + ball.r >= h) {
+        ball.y = h - ball.r;
+        ball.vy = -ball.vy;
+        playTone(300, 'triangle', 0.08);
+      }
+
+      // Bounce J1 paddle
+      if (ball.vx < 0 && ball.x - ball.r <= p1.x + p1.w && ball.x + ball.r >= p1.x) {
+        if (ball.y >= p1.y && ball.y <= p1.y + p1.h) {
+          let hitFactor = (ball.y - (p1.y + p1.h / 2)) / (p1.h / 2);
+          ball.speed = min(ball.speed * 1.05, 15);
+          ball.vx = ball.speed * cos(hitFactor * PI / 4);
+          ball.vy = ball.speed * sin(hitFactor * PI / 4);
+          ball.x = p1.x + p1.w + ball.r;
+          playTone(440, 'square', 0.1);
+          createHitParticles(ball.x, ball.y, '#22c55e');
+        }
+      }
+
+      // Bounce J2 paddle
+      if (ball.vx > 0 && ball.x + ball.r >= p2.x && ball.x - ball.r <= p2.x + p2.w) {
+        if (ball.y >= p2.y && ball.y <= p2.y + p2.h) {
+          let hitFactor = (ball.y - (p2.y + p2.h / 2)) / (p2.h / 2);
+          ball.speed = min(ball.speed * 1.05, 15);
+          ball.vx = -ball.speed * cos(hitFactor * PI / 4);
+          ball.vy = ball.speed * sin(hitFactor * PI / 4);
+          ball.x = p2.x - ball.r;
+          playTone(440, 'square', 0.1);
+          createHitParticles(ball.x, ball.y, '#ef4444');
+        }
+      }
+
+      // Scores check
+      if (ball.x < 0) {
+        score2++;
+        playTone(180, 'sawtooth', 0.35);
+        shake = 10;
+        checkWin();
+        if (state === 'PLAY') resetBall(1);
+      } else if (ball.x > w) {
+        score1++;
+        playTone(600, 'sine', 0.2);
+        shake = 10;
+        checkWin();
+        if (state === 'PLAY') resetBall(-1);
+      }
+    }
+
+    function sign(val) {
+      return val > 0 ? 1 : val < 0 ? -1 : 0;
+    }
+
+    function resetBall(dir) {
+      ball.x = w / 2;
+      ball.y = h / 2;
+      ball.speed = ball.baseSpeed;
+      let angle = random(-PI / 6, PI / 6);
+      ball.vx = dir * ball.speed * cos(angle);
+      ball.vy = ball.speed * sin(angle);
+    }
+
+    function checkWin() {
+      if (score1 >= winScore) {
+        state = 'GAMEOVER';
+        winner = "¡GANADOR: JUGADOR 1!";
+        playTone(880, 'triangle', 0.4);
+      } else if (score2 >= winScore) {
+        state = 'GAMEOVER';
+        winner = gameMode === '2P' ? "¡GANADOR: JUGADOR 2!" : "¡GANADOR: CPU!";
+        playTone(220, 'triangle', 0.5);
+      }
+    }
+
+    function startGame() {
+      score1 = 0;
+      score2 = 0;
+      state = 'PLAY';
+      resetBall(random() > 0.5 ? 1 : -1);
+    }
+
+    function keyPressed() {
+      if (state === 'MENU') {
+        if (key === 'm' || key === 'M') {
+          gameMode = gameMode === '1P' ? '2P' : '1P';
+          playTone(350, 'sine', 0.05);
+        }
+        if (keyCode === ENTER || key === ' ') {
+          startGame();
+        }
+      } else if (state === 'GAMEOVER') {
+        if (keyCode === ENTER || key === ' ') {
+          state = 'MENU';
+        }
+      }
+    }
+
+    // ponytail: simple particle system
+    function createHitParticles(x, y, color) {
+      for (let i = 0; i < 8; i++) {
+        particles.push({
+          x: x, y: y,
+          vx: random(-3, 3), vy: random(-3, 3),
+          life: 255, color: color
+        });
+      }
+    }
+
+    function updateAndDrawParticles() {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 15;
+        if (p.life <= 0) {
+          particles.splice(i, 1);
+        } else {
+          noStroke();
+          let c = color(p.color);
+          fill(red(c), green(c), blue(c), p.life);
+          ellipse(p.x, p.y, 5);
+        }
+      }
+    }
+  </script>
+</body>
+</html>
+</file>
+
+<file path="games/snake/index.html">
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Arcade Snake Standalone</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #0b110e;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: monospace;
+      color: #fff;
+      overflow: hidden;
+    }
+    #canvas-container {
+      border: 4px solid #22c55e;
+      box-shadow: 0 0 25px rgba(34, 197, 94, 0.4);
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <script>
+    // ponytail: simple native audio synth
+    let audioCtx = null;
+    function playTone(freq, type, duration) {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        let osc = audioCtx.createOscillator();
+        let gain = audioCtx.createGain();
+        osc.type = type || 'sine';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    let state = 'MENU'; // MENU, PLAY, GAMEOVER
+    let score = 0, highScore = 0;
+    
+    const cols = 40, rows = 25, cellSize = 20;
+    const w = cols * cellSize, h = rows * cellSize;
+
+    let snake = [];
+    let dir = { x: 1, y: 0 };
+    let nextDir = { x: 1, y: 0 };
+    let food = { x: 0, y: 0, isGold: false };
+    let frameDelay = 7;
+    let powerTimer = 0;
+    let particles = [];
+
+    function setup() {
+      let canvas = createCanvas(w, h);
+      canvas.parent('canvas-container');
+      frameRate(60);
+      loadHighScore();
+    }
+
+    function draw() {
+      background(10, 15, 12);
+      drawGridLines();
+
+      if (state === 'MENU') {
+        drawMenu();
+      } else if (state === 'PLAY') {
+        updateGame();
+        drawGame();
+      } else if (state === 'GAMEOVER') {
+        drawGameOver();
+      }
+
+      updateAndDrawParticles();
+    }
+
+    function drawGridLines() {
+      stroke(34, 197, 94, 10);
+      strokeWeight(1);
+      for (let x = 0; x < w; x += cellSize) {
+        line(x, 0, x, h);
+      }
+      for (let y = 0; y < h; y += cellSize) {
+        line(0, y, w, y);
+      }
+    }
+
+    function drawMenu() {
+      textAlign(CENTER, CENTER);
+      fill(34, 197, 94);
+      textSize(36);
+      textStyle(BOLD);
+      text("NEON SNAKE", w / 2, 130);
+
+      fill(200);
+      textSize(18);
+      textStyle(NORMAL);
+      text(`Record Actual: ${highScore} pts`, w / 2, 210);
+      
+      fill(34, 197, 94);
+      textSize(20);
+      text("Presiona ENTER o ESPACIO para Jugar", w / 2, 280);
+
+      fill(120);
+      textSize(14);
+      text("Controles: Flechas de dirección o WASD", w / 2, 380);
+    }
+
+    function drawGame() {
+      // Draw Food
+      if (food.isGold) {
+        fill(234, 179, 8);
+        ellipse(food.x * cellSize + cellSize/2, food.y * cellSize + cellSize/2, cellSize * 0.95);
+      } else {
+        fill(239, 68, 68);
+        ellipse(food.x * cellSize + cellSize/2, food.y * cellSize + cellSize/2, cellSize * 0.8);
+      }
+
+      // Draw Snake
+      for (let i = 0; i < snake.length; i++) {
+        if (i === 0) {
+          fill(34, 197, 94);
+        } else {
+          fill(22, 163, 74, map(i, 0, snake.length, 255, 100));
+        }
+        rect(snake[i].x * cellSize + 1, snake[i].y * cellSize + 1, cellSize - 2, cellSize - 2, 4);
+      }
+
+      // Draw HUD
+      fill(255, 255, 255, 180);
+      textSize(16);
+      textAlign(LEFT, TOP);
+      text(`Puntos: ${score}`, 20, 20);
+      if (powerTimer > 0) {
+        fill(234, 179, 8);
+        text(`¡SUPER VELOCIDAD! (${Math.ceil(powerTimer / 60)}s)`, 150, 20);
+      }
+    }
+
+    function drawGameOver() {
+      textAlign(CENTER, CENTER);
+      fill(239, 68, 68);
+      textSize(36);
+      text("GAME OVER", w / 2, 160);
+
+      fill(200);
+      textSize(20);
+      text(`Tu puntuación final: ${score} pts`, w / 2, 220);
+      fill(34, 197, 94);
+      text("Presiona ENTER para continuar", w / 2, 300);
+    }
+
+    function updateGame() {
+      if (powerTimer > 0) {
+        powerTimer--;
+      }
+
+      // ponytail: throttle movement speed frame rate
+      let currentDelay = powerTimer > 0 ? 3 : frameDelay;
+      if (frameCount % currentDelay !== 0) return;
+
+      dir = nextDir;
+      let head = snake[0];
+      let newHead = { x: head.x + dir.x, y: head.y + dir.y };
+
+      // Border wrap-around
+      if (newHead.x < 0) newHead.x = cols - 1;
+      if (newHead.x >= cols) newHead.x = 0;
+      if (newHead.y < 0) newHead.y = rows - 1;
+      if (newHead.y >= rows) newHead.y = 0;
+
+      // Self-collision check
+      for (let part of snake) {
+        if (newHead.x === part.x && newHead.y === part.y) {
+          endGame();
+          return;
+        }
+      }
+
+      snake.unshift(newHead);
+
+      // Eat food?
+      if (newHead.x === food.x && newHead.y === food.y) {
+        eatFood();
+      } else {
+        snake.pop();
+      }
+    }
+
+    function eatFood() {
+      let points = food.isGold ? 5 : 1;
+      score += points;
+
+      if (food.isGold) {
+        powerTimer = 300; // 5 seconds of speed boost
+        playTone(600, 'sine', 0.25);
+        createExplosion(food.x * cellSize + cellSize/2, food.y * cellSize + cellSize/2, '#eab308');
+      } else {
+        playTone(450, 'triangle', 0.1);
+        createExplosion(food.x * cellSize + cellSize/2, food.y * cellSize + cellSize/2, '#22c55e');
+      }
+
+      spawnFood();
+    }
+
+    function spawnFood() {
+      let valid = false;
+      while (!valid) {
+        food.x = floor(random(cols));
+        food.y = floor(random(rows));
+        valid = true;
+        for (let part of snake) {
+          if (part.x === food.x && part.y === food.y) {
+            valid = false;
+            break;
+          }
+        }
+      }
+      food.isGold = random() < 0.15; // 15% chance of gold apple
+    }
+
+    function initGame() {
+      snake = [
+        { x: 10, y: 12 },
+        { x: 9, y: 12 },
+        { x: 8, y: 12 }
+      ];
+      dir = { x: 1, y: 0 };
+      nextDir = { x: 1, y: 0 };
+      score = 0;
+      powerTimer = 0;
+      spawnFood();
+      state = 'PLAY';
+    }
+
+    function endGame() {
+      state = 'GAMEOVER';
+      playTone(150, 'sawtooth', 0.5);
+      if (score > highScore) {
+        highScore = score;
+        saveHighScore();
+      }
+    }
+
+    function loadHighScore() {
+      try {
+        let val = localStorage.getItem('arcade_snake_hs');
+        if (val) highScore = parseInt(val);
+      } catch (e) {}
+    }
+
+    function saveHighScore() {
+      try {
+        localStorage.setItem('arcade_snake_hs', highScore);
+      } catch (e) {}
+    }
+
+    function keyPressed() {
+      if (state === 'MENU') {
+        if (keyCode === ENTER || key === ' ') {
+          initGame();
+        }
+      } else if (state === 'GAMEOVER') {
+        if (keyCode === ENTER || key === ' ') {
+          state = 'MENU';
+        }
+      } else if (state === 'PLAY') {
+        if ((keyCode === UP_ARROW || key === 'w' || key === 'W') && dir.y === 0) {
+          nextDir = { x: 0, y: -1 };
+        } else if ((keyCode === DOWN_ARROW || key === 's' || key === 'S') && dir.y === 0) {
+          nextDir = { x: 0, y: 1 };
+        } else if ((keyCode === LEFT_ARROW || key === 'a' || key === 'A') && dir.x === 0) {
+          nextDir = { x: -1, y: 0 };
+        } else if ((keyCode === RIGHT_ARROW || key === 'd' || key === 'D') && dir.x === 0) {
+          nextDir = { x: 1, y: 0 };
+        }
+      }
+    }
+
+    // ponytail: simple particle explosion
+    function createExplosion(x, y, color) {
+      for (let i = 0; i < 12; i++) {
+        particles.push({
+          x: x, y: y,
+          vx: random(-4, 4), vy: random(-4, 4),
+          life: 255, color: color
+        });
+      }
+    }
+
+    function updateAndDrawParticles() {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 15;
+        if (p.life <= 0) {
+          particles.splice(i, 1);
+        } else {
+          noStroke();
+          let c = color(p.color);
+          fill(red(c), green(c), blue(c), p.life);
+          ellipse(p.x, p.y, 6);
+        }
+      }
+    }
+  </script>
+</body>
+</html>
+</file>
+
+<file path="jsconfig.json">
+{
+    "compilerOptions": {
+        "baseUrl": ".",
+        "paths": {
+            "@/*": ["./src/*"]
+        },
+        "ignoreDeprecations": "6.0"
+    }
+}
+</file>
+
+<file path="package.json">
+{
+  "name": "grafica-react",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.5.0",
+    "@fontsource-variable/inter": "^5.2.8",
+    "@tailwindcss/vite": "^4.3.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.17.0",
+    "p5": "^2.3.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "shadcn": "^4.10.0",
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss": "^4.3.0",
+    "tw-animate-css": "^1.4.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "eslint": "^10.3.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.6.0",
+    "vite": "^8.0.12"
+  }
+}
+</file>
+
+<file path="public/favicon.svg">
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="46" fill="none" viewBox="0 0 48 46"><path fill="#863bff" d="M25.946 44.938c-.664.845-2.021.375-2.021-.698V33.937a2.26 2.26 0 0 0-2.262-2.262H10.287c-.92 0-1.456-1.04-.92-1.788l7.48-10.471c1.07-1.497 0-3.578-1.842-3.578H1.237c-.92 0-1.456-1.04-.92-1.788L10.013.474c.214-.297.556-.474.92-.474h28.894c.92 0 1.456 1.04.92 1.788l-7.48 10.471c-1.07 1.498 0 3.579 1.842 3.579h11.377c.943 0 1.473 1.088.89 1.83L25.947 44.94z" style="fill:#863bff;fill:color(display-p3 .5252 .23 1);fill-opacity:1"/><mask id="a" width="48" height="46" x="0" y="0" maskUnits="userSpaceOnUse" style="mask-type:alpha"><path fill="#000" d="M25.842 44.938c-.664.844-2.021.375-2.021-.698V33.937a2.26 2.26 0 0 0-2.262-2.262H10.183c-.92 0-1.456-1.04-.92-1.788l7.48-10.471c1.07-1.498 0-3.579-1.842-3.579H1.133c-.92 0-1.456-1.04-.92-1.787L9.91.473c.214-.297.556-.474.92-.474h28.894c.92 0 1.456 1.04.92 1.788l-7.48 10.471c-1.07 1.498 0 3.578 1.842 3.578h11.377c.943 0 1.473 1.088.89 1.832L25.843 44.94z" style="fill:#000;fill-opacity:1"/></mask><g mask="url(#a)"><g filter="url(#b)"><ellipse cx="5.508" cy="14.704" fill="#ede6ff" rx="5.508" ry="14.704" style="fill:#ede6ff;fill:color(display-p3 .9275 .9033 1);fill-opacity:1" transform="matrix(.00324 1 1 -.00324 -4.47 31.516)"/></g><g filter="url(#c)"><ellipse cx="10.399" cy="29.851" fill="#ede6ff" rx="10.399" ry="29.851" style="fill:#ede6ff;fill:color(display-p3 .9275 .9033 1);fill-opacity:1" transform="matrix(.00324 1 1 -.00324 -39.328 7.883)"/></g><g filter="url(#d)"><ellipse cx="5.508" cy="30.487" fill="#7e14ff" rx="5.508" ry="30.487" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(89.814 -25.913 -14.639)scale(1 -1)"/></g><g filter="url(#e)"><ellipse cx="5.508" cy="30.599" fill="#7e14ff" rx="5.508" ry="30.599" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(89.814 -32.644 -3.334)scale(1 -1)"/></g><g filter="url(#f)"><ellipse cx="5.508" cy="30.599" fill="#7e14ff" rx="5.508" ry="30.599" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="matrix(.00324 1 1 -.00324 -34.34 30.47)"/></g><g filter="url(#g)"><ellipse cx="14.072" cy="22.078" fill="#ede6ff" rx="14.072" ry="22.078" style="fill:#ede6ff;fill:color(display-p3 .9275 .9033 1);fill-opacity:1" transform="rotate(93.35 24.506 48.493)scale(-1 1)"/></g><g filter="url(#h)"><ellipse cx="3.47" cy="21.501" fill="#7e14ff" rx="3.47" ry="21.501" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(89.009 28.708 47.59)scale(-1 1)"/></g><g filter="url(#i)"><ellipse cx="3.47" cy="21.501" fill="#7e14ff" rx="3.47" ry="21.501" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(89.009 28.708 47.59)scale(-1 1)"/></g><g filter="url(#j)"><ellipse cx=".387" cy="8.972" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(39.51 .387 8.972)"/></g><g filter="url(#k)"><ellipse cx="47.523" cy="-6.092" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(37.892 47.523 -6.092)"/></g><g filter="url(#l)"><ellipse cx="41.412" cy="6.333" fill="#47bfff" rx="5.971" ry="9.665" style="fill:#47bfff;fill:color(display-p3 .2799 .748 1);fill-opacity:1" transform="rotate(37.892 41.412 6.333)"/></g><g filter="url(#m)"><ellipse cx="-1.879" cy="38.332" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(37.892 -1.88 38.332)"/></g><g filter="url(#n)"><ellipse cx="-1.879" cy="38.332" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(37.892 -1.88 38.332)"/></g><g filter="url(#o)"><ellipse cx="35.651" cy="29.907" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(37.892 35.651 29.907)"/></g><g filter="url(#p)"><ellipse cx="38.418" cy="32.4" fill="#47bfff" rx="5.971" ry="15.297" style="fill:#47bfff;fill:color(display-p3 .2799 .748 1);fill-opacity:1" transform="rotate(37.892 38.418 32.4)"/></g></g><defs><filter id="b" width="60.045" height="41.654" x="-19.77" y="16.149" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="7.659"/></filter><filter id="c" width="90.34" height="51.437" x="-54.613" y="-7.533" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="7.659"/></filter><filter id="d" width="79.355" height="29.4" x="-49.64" y="2.03" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="e" width="79.579" height="29.4" x="-45.045" y="20.029" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="f" width="79.579" height="29.4" x="-43.513" y="21.178" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="g" width="74.749" height="58.852" x="15.756" y="-17.901" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="7.659"/></filter><filter id="h" width="61.377" height="25.362" x="23.548" y="2.284" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="i" width="61.377" height="25.362" x="23.548" y="2.284" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="j" width="56.045" height="63.649" x="-27.636" y="-22.853" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="k" width="54.814" height="64.646" x="20.116" y="-38.415" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="l" width="33.541" height="35.313" x="24.641" y="-11.323" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="m" width="54.814" height="64.646" x="-29.286" y="6.009" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="n" width="54.814" height="64.646" x="-29.286" y="6.009" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="o" width="54.814" height="64.646" x="8.244" y="-2.416" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="p" width="39.409" height="43.623" x="18.713" y="10.588" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter></defs></svg>
+</file>
+
+<file path="public/icons.svg">
+<svg xmlns="http://www.w3.org/2000/svg">
+  <symbol id="bluesky-icon" viewBox="0 0 16 17">
+    <g clip-path="url(#bluesky-clip)"><path fill="#08060d" d="M7.75 7.735c-.693-1.348-2.58-3.86-4.334-5.097-1.68-1.187-2.32-.981-2.74-.79C.188 2.065.1 2.812.1 3.251s.241 3.602.398 4.13c.52 1.744 2.367 2.333 4.07 2.145-2.495.37-4.71 1.278-1.805 4.512 3.196 3.309 4.38-.71 4.987-2.746.608 2.036 1.307 5.91 4.93 2.746 2.72-2.746.747-4.143-1.747-4.512 1.702.189 3.55-.4 4.07-2.145.156-.528.397-3.691.397-4.13s-.088-1.186-.575-1.406c-.42-.19-1.06-.395-2.741.79-1.755 1.24-3.64 3.752-4.334 5.099"/></g>
+    <defs><clipPath id="bluesky-clip"><path fill="#fff" d="M.1.85h15.3v15.3H.1z"/></clipPath></defs>
+  </symbol>
+  <symbol id="discord-icon" viewBox="0 0 20 19">
+    <path fill="#08060d" d="M16.224 3.768a14.5 14.5 0 0 0-3.67-1.153c-.158.286-.343.67-.47.976a13.5 13.5 0 0 0-4.067 0c-.128-.306-.317-.69-.476-.976A14.4 14.4 0 0 0 3.868 3.77C1.546 7.28.916 10.703 1.231 14.077a14.7 14.7 0 0 0 4.5 2.306q.545-.748.965-1.587a9.5 9.5 0 0 1-1.518-.74q.191-.14.372-.293c2.927 1.369 6.107 1.369 8.999 0q.183.152.372.294-.723.437-1.52.74.418.838.963 1.588a14.6 14.6 0 0 0 4.504-2.308c.37-3.911-.63-7.302-2.644-10.309m-9.13 8.234c-.878 0-1.599-.82-1.599-1.82 0-.998.705-1.82 1.6-1.82.894 0 1.614.82 1.599 1.82.001 1-.705 1.82-1.6 1.82m5.91 0c-.878 0-1.599-.82-1.599-1.82 0-.998.705-1.82 1.6-1.82.893 0 1.614.82 1.599 1.82 0 1-.706 1.82-1.6 1.82"/>
+  </symbol>
+  <symbol id="documentation-icon" viewBox="0 0 21 20">
+    <path fill="none" stroke="#aa3bff" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35" d="m15.5 13.333 1.533 1.322c.645.555.967.833.967 1.178s-.322.623-.967 1.179L15.5 18.333m-3.333-5-1.534 1.322c-.644.555-.966.833-.966 1.178s.322.623.966 1.179l1.534 1.321"/>
+    <path fill="none" stroke="#aa3bff" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35" d="M17.167 10.836v-4.32c0-1.41 0-2.117-.224-2.68-.359-.906-1.118-1.621-2.08-1.96-.599-.21-1.349-.21-2.848-.21-2.623 0-3.935 0-4.983.369-1.684.591-3.013 1.842-3.641 3.428C3 6.449 3 7.684 3 10.154v2.122c0 2.558 0 3.838.706 4.726q.306.383.713.671c.76.536 1.79.64 3.581.66"/>
+    <path fill="none" stroke="#aa3bff" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35" d="M3 10a2.78 2.78 0 0 1 2.778-2.778c.555 0 1.209.097 1.748-.047.48-.129.854-.503.982-.982.145-.54.048-1.194.048-1.749a2.78 2.78 0 0 1 2.777-2.777"/>
+  </symbol>
+  <symbol id="github-icon" viewBox="0 0 19 19">
+    <path fill="#08060d" fill-rule="evenodd" d="M9.356 1.85C5.05 1.85 1.57 5.356 1.57 9.694a7.84 7.84 0 0 0 5.324 7.44c.387.079.528-.168.528-.376 0-.182-.013-.805-.013-1.454-2.165.467-2.616-.935-2.616-.935-.349-.91-.864-1.143-.864-1.143-.71-.48.051-.48.051-.48.787.051 1.2.805 1.2.805.695 1.194 1.817.857 2.268.649.064-.507.27-.857.49-1.052-1.728-.182-3.545-.857-3.545-3.87 0-.857.31-1.558.8-2.104-.078-.195-.349-1 .077-2.078 0 0 .657-.208 2.14.805a7.5 7.5 0 0 1 1.946-.26c.657 0 1.328.092 1.946.26 1.483-1.013 2.14-.805 2.14-.805.426 1.078.155 1.883.078 2.078.502.546.799 1.247.799 2.104 0 3.013-1.818 3.675-3.558 3.87.284.247.528.714.528 1.454 0 1.052-.012 1.896-.012 2.156 0 .208.142.455.528.377a7.84 7.84 0 0 0 5.324-7.441c.013-4.338-3.48-7.844-7.773-7.844" clip-rule="evenodd"/>
+  </symbol>
+  <symbol id="social-icon" viewBox="0 0 20 20">
+    <path fill="none" stroke="#aa3bff" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35" d="M12.5 6.667a4.167 4.167 0 1 0-8.334 0 4.167 4.167 0 0 0 8.334 0"/>
+    <path fill="none" stroke="#aa3bff" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35" d="M2.5 16.667a5.833 5.833 0 0 1 8.75-5.053m3.837.474.513 1.035c.07.144.257.282.414.309l.93.155c.596.1.736.536.307.965l-.723.73a.64.64 0 0 0-.152.531l.207.903c.164.715-.213.991-.84.618l-.872-.52a.63.63 0 0 0-.577 0l-.872.52c-.624.373-1.003.094-.84-.618l.207-.903a.64.64 0 0 0-.152-.532l-.723-.729c-.426-.43-.289-.864.306-.964l.93-.156a.64.64 0 0 0 .412-.31l.513-1.034c.28-.562.735-.562 1.012 0"/>
+  </symbol>
+  <symbol id="x-icon" viewBox="0 0 19 19">
+    <path fill="#08060d" fill-rule="evenodd" d="M1.893 1.98c.052.072 1.245 1.769 2.653 3.77l2.892 4.114c.183.261.333.48.333.486s-.068.089-.152.183l-.522.593-.765.867-3.597 4.087c-.375.426-.734.834-.798.905a1 1 0 0 0-.118.148c0 .01.236.017.664.017h.663l.729-.83c.4-.457.796-.906.879-.999a692 692 0 0 0 1.794-2.038c.034-.037.301-.34.594-.675l.551-.624.345-.392a7 7 0 0 1 .34-.374c.006 0 .93 1.306 2.052 2.903l2.084 2.965.045.063h2.275c1.87 0 2.273-.003 2.266-.021-.008-.02-1.098-1.572-3.894-5.547-2.013-2.862-2.28-3.246-2.273-3.266.008-.019.282-.332 2.085-2.38l2-2.274 1.567-1.782c.022-.028-.016-.03-.65-.03h-.674l-.3.342a871 871 0 0 1-1.782 2.025c-.067.075-.405.458-.75.852a100 100 0 0 1-.803.91c-.148.172-.299.344-.99 1.127-.304.343-.32.358-.345.327-.015-.019-.904-1.282-1.976-2.808L6.365 1.85H1.8zm1.782.91 8.078 11.294c.772 1.08 1.413 1.973 1.425 1.984.016.017.241.02 1.05.017l1.03-.004-2.694-3.766L7.796 5.75 5.722 2.852l-1.039-.004-1.039-.004z" clip-rule="evenodd"/>
+  </symbol>
+</svg>
+</file>
+
+<file path="README.md">
+# React + Vite
+
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+
+Currently, two official plugins are available:
+
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+
+## React Compiler
+
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+</file>
+
+<file path="src/assets/react.svg">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="35.93" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 228"><path fill="#00D8FF" d="M210.483 73.824a171.49 171.49 0 0 0-8.24-2.597c.465-1.9.893-3.777 1.273-5.621c6.238-30.281 2.16-54.676-11.769-62.708c-13.355-7.7-35.196.329-57.254 19.526a171.23 171.23 0 0 0-6.375 5.848a155.866 155.866 0 0 0-4.241-3.917C100.759 3.829 77.587-4.822 63.673 3.233C50.33 10.957 46.379 33.89 51.995 62.588a170.974 170.974 0 0 0 1.892 8.48c-3.28.932-6.445 1.924-9.474 2.98C17.309 83.498 0 98.307 0 113.668c0 15.865 18.582 31.778 46.812 41.427a145.52 145.52 0 0 0 6.921 2.165a167.467 167.467 0 0 0-2.01 9.138c-5.354 28.2-1.173 50.591 12.134 58.266c13.744 7.926 36.812-.22 59.273-19.855a145.567 145.567 0 0 0 5.342-4.923a168.064 168.064 0 0 0 6.92 6.314c21.758 18.722 43.246 26.282 56.54 18.586c13.731-7.949 18.194-32.003 12.4-61.268a145.016 145.016 0 0 0-1.535-6.842c1.62-.48 3.21-.974 4.76-1.488c29.348-9.723 48.443-25.443 48.443-41.52c0-15.417-17.868-30.326-45.517-39.844Zm-6.365 70.984c-1.4.463-2.836.91-4.3 1.345c-3.24-10.257-7.612-21.163-12.963-32.432c5.106-11 9.31-21.767 12.459-31.957c2.619.758 5.16 1.557 7.61 2.4c23.69 8.156 38.14 20.213 38.14 29.504c0 9.896-15.606 22.743-40.946 31.14Zm-10.514 20.834c2.562 12.94 2.927 24.64 1.23 33.787c-1.524 8.219-4.59 13.698-8.382 15.893c-8.067 4.67-25.32-1.4-43.927-17.412a156.726 156.726 0 0 1-6.437-5.87c7.214-7.889 14.423-17.06 21.459-27.246c12.376-1.098 24.068-2.894 34.671-5.345a134.17 134.17 0 0 1 1.386 6.193ZM87.276 214.515c-7.882 2.783-14.16 2.863-17.955.675c-8.075-4.657-11.432-22.636-6.853-46.752a156.923 156.923 0 0 1 1.869-8.499c10.486 2.32 22.093 3.988 34.498 4.994c7.084 9.967 14.501 19.128 21.976 27.15a134.668 134.668 0 0 1-4.877 4.492c-9.933 8.682-19.886 14.842-28.658 17.94ZM50.35 144.747c-12.483-4.267-22.792-9.812-29.858-15.863c-6.35-5.437-9.555-10.836-9.555-15.216c0-9.322 13.897-21.212 37.076-29.293c2.813-.98 5.757-1.905 8.812-2.773c3.204 10.42 7.406 21.315 12.477 32.332c-5.137 11.18-9.399 22.249-12.634 32.792a134.718 134.718 0 0 1-6.318-1.979Zm12.378-84.26c-4.811-24.587-1.616-43.134 6.425-47.789c8.564-4.958 27.502 2.111 47.463 19.835a144.318 144.318 0 0 1 3.841 3.545c-7.438 7.987-14.787 17.08-21.808 26.988c-12.04 1.116-23.565 2.908-34.161 5.309a160.342 160.342 0 0 1-1.76-7.887Zm110.427 27.268a347.8 347.8 0 0 0-7.785-12.803c8.168 1.033 15.994 2.404 23.343 4.08c-2.206 7.072-4.956 14.465-8.193 22.045a381.151 381.151 0 0 0-7.365-13.322Zm-45.032-43.861c5.044 5.465 10.096 11.566 15.065 18.186a322.04 322.04 0 0 0-30.257-.006c4.974-6.559 10.069-12.652 15.192-18.18ZM82.802 87.83a323.167 323.167 0 0 0-7.227 13.238c-3.184-7.553-5.909-14.98-8.134-22.152c7.304-1.634 15.093-2.97 23.209-3.984a321.524 321.524 0 0 0-7.848 12.897Zm8.081 65.352c-8.385-.936-16.291-2.203-23.593-3.793c2.26-7.3 5.045-14.885 8.298-22.6a321.187 321.187 0 0 0 7.257 13.246c2.594 4.48 5.28 8.868 8.038 13.147Zm37.542 31.03c-5.184-5.592-10.354-11.779-15.403-18.433c4.902.192 9.899.29 14.978.29c5.218 0 10.376-.117 15.453-.343c-4.985 6.774-10.018 12.97-15.028 18.486Zm52.198-57.817c3.422 7.8 6.306 15.345 8.596 22.52c-7.422 1.694-15.436 3.058-23.88 4.071a382.417 382.417 0 0 0 7.859-13.026a347.403 347.403 0 0 0 7.425-13.565Zm-16.898 8.101a358.557 358.557 0 0 1-12.281 19.815a329.4 329.4 0 0 1-23.444.823c-7.967 0-15.716-.248-23.178-.732a310.202 310.202 0 0 1-12.513-19.846h.001a307.41 307.41 0 0 1-10.923-20.627a310.278 310.278 0 0 1 10.89-20.637l-.001.001a307.318 307.318 0 0 1 12.413-19.761c7.613-.576 15.42-.876 23.31-.876H128c7.926 0 15.743.303 23.354.883a329.357 329.357 0 0 1 12.335 19.695a358.489 358.489 0 0 1 11.036 20.54a329.472 329.472 0 0 1-11 20.722Zm22.56-122.124c8.572 4.944 11.906 24.881 6.52 51.026c-.344 1.668-.73 3.367-1.15 5.09c-10.622-2.452-22.155-4.275-34.23-5.408c-7.034-10.017-14.323-19.124-21.64-27.008a160.789 160.789 0 0 1 5.888-5.4c18.9-16.447 36.564-22.941 44.612-18.3ZM128 90.808c12.625 0 22.86 10.235 22.86 22.86s-10.235 22.86-22.86 22.86s-22.86-10.235-22.86-22.86s10.235-22.86 22.86-22.86Z"></path></svg>
+</file>
+
+<file path="src/assets/vite.svg">
+<svg xmlns="http://www.w3.org/2000/svg" width="77" height="47" fill="none" aria-labelledby="vite-logo-title" viewBox="0 0 77 47"><title id="vite-logo-title">Vite</title><style>.parenthesis{fill:#000}@media (prefers-color-scheme:dark){.parenthesis{fill:#fff}}</style><path fill="#9135ff" d="M40.151 45.71c-.663.844-2.02.374-2.02-.699V34.708a2.26 2.26 0 0 0-2.262-2.262H24.493c-.92 0-1.457-1.04-.92-1.788l7.479-10.471c1.07-1.498 0-3.578-1.842-3.578H15.443c-.92 0-1.456-1.04-.92-1.788l9.696-13.576c.213-.297.556-.474.92-.474h28.894c.92 0 1.456 1.04.92 1.788l-7.48 10.472c-1.07 1.497 0 3.578 1.842 3.578h11.376c.944 0 1.474 1.087.89 1.83L40.153 45.712z"/><mask id="a" width="48" height="47" x="14" y="0" maskUnits="userSpaceOnUse" style="mask-type:alpha"><path fill="#000" d="M40.047 45.71c-.663.843-2.02.374-2.02-.699V34.708a2.26 2.26 0 0 0-2.262-2.262H24.389c-.92 0-1.457-1.04-.92-1.788l7.479-10.472c1.07-1.497 0-3.578-1.842-3.578H15.34c-.92 0-1.456-1.04-.92-1.788l9.696-13.575c.213-.297.556-.474.92-.474H53.93c.92 0 1.456 1.04.92 1.788L47.37 13.03c-1.07 1.498 0 3.578 1.842 3.578h11.376c.944 0 1.474 1.088.89 1.831L40.049 45.712z"/></mask><g mask="url(#a)"><g filter="url(#b)"><ellipse cx="5.508" cy="14.704" fill="#eee6ff" rx="5.508" ry="14.704" transform="rotate(269.814 20.96 11.29)scale(-1 1)"/></g><g filter="url(#c)"><ellipse cx="10.399" cy="29.851" fill="#eee6ff" rx="10.399" ry="29.851" transform="rotate(89.814 -16.902 -8.275)scale(1 -1)"/></g><g filter="url(#d)"><ellipse cx="5.508" cy="30.487" fill="#8900ff" rx="5.508" ry="30.487" transform="rotate(89.814 -19.197 -7.127)scale(1 -1)"/></g><g filter="url(#e)"><ellipse cx="5.508" cy="30.599" fill="#8900ff" rx="5.508" ry="30.599" transform="rotate(89.814 -25.928 4.177)scale(1 -1)"/></g><g filter="url(#f)"><ellipse cx="5.508" cy="30.599" fill="#8900ff" rx="5.508" ry="30.599" transform="rotate(89.814 -25.738 5.52)scale(1 -1)"/></g><g filter="url(#g)"><ellipse cx="14.072" cy="22.078" fill="#eee6ff" rx="14.072" ry="22.078" transform="rotate(93.35 31.245 55.578)scale(-1 1)"/></g><g filter="url(#h)"><ellipse cx="3.47" cy="21.501" fill="#8900ff" rx="3.47" ry="21.501" transform="rotate(89.009 35.419 55.202)scale(-1 1)"/></g><g filter="url(#i)"><ellipse cx="3.47" cy="21.501" fill="#8900ff" rx="3.47" ry="21.501" transform="rotate(89.009 35.419 55.202)scale(-1 1)"/></g><g filter="url(#j)"><ellipse cx="14.592" cy="9.743" fill="#8900ff" rx="4.407" ry="29.108" transform="rotate(39.51 14.592 9.743)"/></g><g filter="url(#k)"><ellipse cx="61.728" cy="-5.321" fill="#8900ff" rx="4.407" ry="29.108" transform="rotate(37.892 61.728 -5.32)"/></g><g filter="url(#l)"><ellipse cx="55.618" cy="7.104" fill="#00c2ff" rx="5.971" ry="9.665" transform="rotate(37.892 55.618 7.104)"/></g><g filter="url(#m)"><ellipse cx="12.326" cy="39.103" fill="#8900ff" rx="4.407" ry="29.108" transform="rotate(37.892 12.326 39.103)"/></g><g filter="url(#n)"><ellipse cx="12.326" cy="39.103" fill="#8900ff" rx="4.407" ry="29.108" transform="rotate(37.892 12.326 39.103)"/></g><g filter="url(#o)"><ellipse cx="49.857" cy="30.678" fill="#8900ff" rx="4.407" ry="29.108" transform="rotate(37.892 49.857 30.678)"/></g><g filter="url(#p)"><ellipse cx="52.623" cy="33.171" fill="#00c2ff" rx="5.971" ry="15.297" transform="rotate(37.892 52.623 33.17)"/></g></g><path d="M6.919 0c-9.198 13.166-9.252 33.575 0 46.789h6.215c-9.25-13.214-9.196-33.623 0-46.789zm62.424 0h-6.215c9.198 13.166 9.252 33.575 0 46.789h6.215c9.25-13.214 9.196-33.623 0-46.789" class="parenthesis"/><defs><filter id="b" width="60.045" height="41.654" x="-5.564" y="16.92" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="7.659"/></filter><filter id="c" width="90.34" height="51.437" x="-40.407" y="-6.762" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="7.659"/></filter><filter id="d" width="79.355" height="29.4" x="-35.435" y="2.801" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="e" width="79.579" height="29.4" x="-30.84" y="20.8" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="f" width="79.579" height="29.4" x="-29.307" y="21.949" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="g" width="74.749" height="58.852" x="29.961" y="-17.13" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="7.659"/></filter><filter id="h" width="61.377" height="25.362" x="37.754" y="3.055" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="i" width="61.377" height="25.362" x="37.754" y="3.055" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="j" width="56.045" height="63.649" x="-13.43" y="-22.082" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="k" width="54.814" height="64.646" x="34.321" y="-37.644" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="l" width="33.541" height="35.313" x="38.847" y="-10.552" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="m" width="54.814" height="64.646" x="-15.081" y="6.78" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="n" width="54.814" height="64.646" x="-15.081" y="6.78" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="o" width="54.814" height="64.646" x="22.45" y="-1.645" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="p" width="39.409" height="43.623" x="32.919" y="11.36" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter></defs></svg>
+</file>
+
+<file path="src/components/sketchs/breakoutSketch.js">
+// ponytail: self-contained p5.js instance mode sketch with native audio synth
+export const breakoutSketch = (p) => {
+  let audioCtx = null;
+  function playTone(freq, type, duration) {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      let osc = audioCtx.createOscillator();
+      let gain = audioCtx.createGain();
+      osc.type = type || 'sine';
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    } catch (e) {}
+  }
+
+  let state = 'MENU';
+  let score = 0, lives = 3;
+
+  const w = 800, h = 500;
+  
+  let paddle = { x: 350, y: 460, w: 100, baseW: 100, h: 15 };
+  let balls = [];
+  
+  let bricks = [];
+  const cols = 10, rows = 4;
+  const brickW = 70, brickH = 20;
+  const paddingX = 8, paddingY = 8;
+  const gridOffsetY = 60, gridOffsetX = 12;
+
+  let powerups = [];
+  let powerupTimer = 0;
+  let activePowerup = null;
+  
+  let particles = [];
+  let shake = 0;
+
+  p.setup = () => {
+    p.createCanvas(w, h);
+  };
+
+  p.draw = () => {
+    if (shake > 0) {
+      p.translate(p.random(-shake, shake), p.random(-shake, shake));
+      shake *= 0.9;
+      if (shake < 0.2) shake = 0;
+    }
+
+    p.background(15, 10, 20);
+    drawGridBackground();
+
+    if (state === 'MENU') {
+      drawMenu();
+    } else {
+      if (state === 'PLAY') {
+        updateGame();
+      } else if (state === 'READY') {
+        updatePaddleOnly();
+      }
+      drawGame();
+    }
+
+    updateAndDrawParticles();
+  };
+
+  function drawGridBackground() {
+    p.stroke(147, 51, 234, 15);
+    p.strokeWeight(1);
+    for (let x = 0; x < w; x += 40) {
+      p.line(x, 0, x, h);
+    }
+    for (let y = 0; y < h; y += 40) {
+      p.line(0, y, w, y);
+    }
+  }
+
+  function drawMenu() {
+    p.textAlign(p.CENTER, p.CENTER);
+    p.fill(168, 85, 247);
+    p.textSize(36);
+    p.textStyle(p.BOLD);
+    p.text("GALACTIC BREAKOUT", w / 2, 140);
+
+    p.fill(200);
+    p.textSize(20);
+    p.textStyle(p.NORMAL);
+    p.text("Presiona ENTER o ESPACIO para Iniciar", w / 2, 250);
+
+    p.fill(120);
+    p.textSize(14);
+    p.text("Mueve el mouse para la paleta | ESPACIO para lanzar bola", w / 2, 380);
+  }
+
+  function drawGame() {
+    for (let b of bricks) {
+      if (!b.active) continue;
+      let c = p.color(168, 85, 247);
+      if (b.row === 0) c = p.color(239, 68, 68);
+      else if (b.row === 1) c = p.color(249, 115, 22);
+      else if (b.row === 2) c = p.color(34, 197, 94);
+      else c = p.color(6, 182, 212);
+
+      p.fill(c);
+      p.noStroke();
+      p.rect(b.x, b.y, brickW, brickH, 3);
+    }
+
+    p.fill(168, 85, 247);
+    p.rect(paddle.x, paddle.y, paddle.w, paddle.h, 6);
+
+    p.fill(255);
+    for (let b of balls) {
+      p.ellipse(b.x, b.y, b.r * 2);
+    }
+
+    for (let pu of powerups) {
+      let pc = pu.type === 'WIDE' ? p.color(34, 197, 94) : p.color(6, 182, 212);
+      p.fill(pc);
+      p.rect(pu.x - 10, pu.y - 8, 20, 16, 6);
+      p.fill(0);
+      p.textAlign(p.CENTER, p.CENTER);
+      p.textSize(10);
+      p.textStyle(p.BOLD);
+      p.text(pu.type === 'WIDE' ? 'W' : 'M', pu.x, pu.y);
+    }
+    p.textStyle(p.NORMAL);
+
+    p.fill(255, 255, 255, 200);
+    p.textSize(16);
+    p.textAlign(p.LEFT, p.TOP);
+    p.text(`PUNTOS: ${score}`, 20, 20);
+
+    p.textAlign(p.RIGHT, p.TOP);
+    let livesStr = "";
+    for (let i = 0; i < lives; i++) livesStr += "♥ ";
+    p.fill(236, 72, 153);
+    p.text(`VIDAS: ${livesStr}`, w - 20, 20);
+
+    if (state === 'READY') {
+      p.fill(255);
+      p.textAlign(p.CENTER, p.CENTER);
+      p.textSize(18);
+      p.text("Presiona ESPACIO para lanzar la bola", w / 2, h / 2 + 50);
+    } else if (state === 'GAMEOVER') {
+      drawOverlay("GAME OVER", p.color(239, 68, 68));
+    } else if (state === 'VICTORY') {
+      drawOverlay("¡VICTORIA GALÁCTICA!", p.color(34, 197, 94));
+    }
+  }
+
+  function drawOverlay(title, col) {
+    p.fill(0, 0, 0, 180);
+    p.rect(0, 0, w, h);
+    p.textAlign(p.CENTER, p.CENTER);
+    p.fill(col);
+    p.textSize(36);
+    p.textStyle(p.BOLD);
+    p.text(title, w / 2, h / 2 - 30);
+    p.fill(200);
+    p.textSize(18);
+    p.textStyle(p.NORMAL);
+    p.text(`Puntuación final: ${score} pts`, w / 2, h / 2 + 20);
+    p.text("Presiona ENTER para volver al menú principal", w / 2, h / 2 + 70);
+  }
+
+  function updatePaddleOnly() {
+    if (p.mouseX > 0 && p.mouseX < w) {
+      paddle.x = p.constrain(p.mouseX - paddle.w/2, 0, w - paddle.w);
+    }
+    if (balls.length > 0) {
+      balls[0].x = paddle.x + paddle.w / 2;
+      balls[0].y = paddle.y - balls[0].r - 2;
+    }
+  }
+
+  function updateGame() {
+    if (p.mouseX > 0 && p.mouseX < w) {
+      paddle.x = p.constrain(p.mouseX - paddle.w/2, 0, w - paddle.w);
+    }
+
+    if (powerupTimer > 0) {
+      powerupTimer--;
+      if (powerupTimer <= 0) {
+        paddle.w = paddle.baseW;
+        activePowerup = null;
+      }
+    }
+
+    for (let i = balls.length - 1; i >= 0; i--) {
+      let b = balls[i];
+      b.x += b.vx;
+      b.y += b.vy;
+
+      if (b.x - b.r <= 0) {
+        b.x = b.r;
+        b.vx = -b.vx;
+        playTone(320, 'sine', 0.05);
+      } else if (b.x + b.r >= w) {
+        b.x = w - b.r;
+        b.vx = -b.vx;
+        playTone(320, 'sine', 0.05);
+      }
+
+      if (b.y - b.r <= 0) {
+        b.y = b.r;
+        b.vy = -b.vy;
+        playTone(320, 'sine', 0.05);
+      }
+
+      if (b.y - b.r > h) {
+        balls.splice(i, 1);
+        continue;
+      }
+
+      if (b.vy > 0 && b.y + b.r >= paddle.y && b.y - b.r <= paddle.y + paddle.h) {
+        if (b.x >= paddle.x && b.x <= paddle.x + paddle.w) {
+          let hitFactor = (b.x - (paddle.x + paddle.w/2)) / (paddle.w/2);
+          let angle = hitFactor * p.PI / 3.5;
+          b.vx = b.speed * p.sin(angle);
+          b.vy = -b.speed * p.cos(angle);
+          b.y = paddle.y - b.r;
+          playTone(400, 'triangle', 0.08);
+        }
+      }
+
+      checkBrickCollision(b);
+    }
+
+    if (balls.length === 0) {
+      loseLife();
+    }
+
+    for (let i = powerups.length - 1; i >= 0; i--) {
+      let pu = powerups[i];
+      pu.y += 3;
+      
+      if (pu.y + 8 >= paddle.y && pu.y - 8 <= paddle.y + paddle.h) {
+        if (pu.x >= paddle.x && pu.x <= paddle.x + paddle.w) {
+          applyPowerup(pu.type);
+          powerups.splice(i, 1);
+          continue;
+        }
+      }
+      
+      if (pu.y > h + 15) {
+        powerups.splice(i, 1);
+      }
+    }
+
+    let activeBricks = bricks.filter(br => br.active);
+    if (activeBricks.length === 0) {
+      state = 'VICTORY';
+      playTone(700, 'sine', 0.4);
+    }
+  }
+
+  function checkBrickCollision(ball) {
+    for (let b of bricks) {
+      if (!b.active) continue;
+
+      if (ball.x + ball.r >= b.x && ball.x - ball.r <= b.x + brickW &&
+          ball.y + ball.r >= b.y && ball.y - ball.r <= b.y + brickH) {
+        
+        ball.vy = -ball.vy;
+        b.active = false;
+        score += 10;
+        shake = 4;
+        playTone(500, 'square', 0.1);
+        createBrickExplosion(b.x + brickW/2, b.y + brickH/2);
+
+        if (p.random() < 0.15) {
+          powerups.push({
+            x: b.x + brickW/2,
+            y: b.y + brickH/2,
+            type: p.random() > 0.5 ? 'WIDE' : 'MULTI'
+          });
+        }
+        break;
+      }
+    }
+  }
+
+  function applyPowerup(type) {
+    playTone(600, 'sine', 0.2);
+    if (type === 'WIDE') {
+      paddle.w = paddle.baseW * 1.5;
+      powerupTimer = 480;
+      activePowerup = 'WIDE';
+    } else if (type === 'MULTI') {
+      if (balls.length > 0) {
+        let baseBall = balls[0];
+        balls.push({
+          x: baseBall.x, y: baseBall.y,
+          vx: -baseBall.vx, vy: baseBall.vy,
+          r: baseBall.r, speed: baseBall.speed
+        });
+        balls.push({
+          x: baseBall.x, y: baseBall.y,
+          vx: baseBall.vx * 0.5, vy: -baseBall.vy,
+          r: baseBall.r, speed: baseBall.speed
+        });
+      }
+    }
+  }
+
+  function loseLife() {
+    lives--;
+    powerups = [];
+    paddle.w = paddle.baseW;
+    activePowerup = null;
+    powerupTimer = 0;
+
+    if (lives <= 0) {
+      state = 'GAMEOVER';
+      playTone(180, 'sawtooth', 0.5);
+    } else {
+      playTone(200, 'sawtooth', 0.25);
+      state = 'READY';
+      balls = [{ x: w/2, y: h - 50, vx: 0, vy: 0, r: 8, speed: 6 }];
+    }
+  }
+
+  function initGame() {
+    score = 0;
+    lives = 3;
+    powerups = [];
+    paddle.w = paddle.baseW;
+    
+    bricks = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        bricks.push({
+          x: gridOffsetX + c * (brickW + paddingX),
+          y: gridOffsetY + r * (brickH + paddingY),
+          row: r,
+          active: true
+        });
+      }
+    }
+
+    balls = [{ x: w/2, y: h - 50, vx: 0, vy: 0, r: 8, speed: 6 }];
+    state = 'READY';
+  }
+
+  function launchBall() {
+    if (state !== 'READY' || balls.length === 0) return;
+    let angle = p.random(-p.PI/6, p.PI/6);
+    balls[0].vx = balls[0].speed * p.sin(angle);
+    balls[0].vy = -balls[0].speed * p.cos(angle);
+    state = 'PLAY';
+    playTone(400, 'sine', 0.1);
+  }
+
+  p.keyPressed = () => {
+    if (state === 'MENU') {
+      if (p.keyCode === p.ENTER || p.key === ' ') {
+        initGame();
+      }
+    } else if (state === 'READY') {
+      if (p.key === ' ' || p.keyCode === p.ENTER) {
+        launchBall();
+      }
+    } else if (state === 'GAMEOVER' || state === 'VICTORY') {
+      if (p.keyCode === p.ENTER || p.key === ' ') {
+        state = 'MENU';
+      }
+    }
+  };
+
+  function createBrickExplosion(x, y) {
+    for (let i = 0; i < 10; i++) {
+      particles.push({
+        x: x, y: y,
+        vx: p.random(-4, 4), vy: p.random(-4, 4),
+        life: 255, color: '#a855f7'
+      });
+    }
+  }
+
+  function updateAndDrawParticles() {
+    for (let i = particles.length - 1; i >= 0; i--) {
+      let part = particles[i];
+      part.x += part.vx;
+      part.y += part.vy;
+      part.life -= 15;
+      if (part.life <= 0) {
+        particles.splice(i, 1);
+      } else {
+        p.noStroke();
+        let c = p.color(part.color);
+        p.fill(p.red(c), p.green(c), p.blue(c), part.life);
+        p.ellipse(part.x, part.y, 5);
+      }
+    }
+  }
+};
+</file>
+
+<file path="src/components/sketchs/circleSketch.js">
+export const circleSketch = (p) => {
+    p.setup = () => {
+        p.createCanvas(400, 400);
+    };
+    p.draw = () => {
+        p.background(20);
+        p.fill(59, 130, 246); // Azul
+        p.ellipse(p.mouseX, p.mouseY, 60, 60);
+    };
+}
+</file>
+
+<file path="src/components/sketchs/pongSketch.js">
+// ponytail: self-contained p5.js instance mode sketch with native audio synth
+export const pongSketch = (p) => {
+  let audioCtx = null;
+  function playTone(freq, type, duration) {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      let osc = audioCtx.createOscillator();
+      let gain = audioCtx.createGain();
+      osc.type = type || 'square';
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    } catch (e) {}
+  }
+
+  let state = 'MENU';
+  let gameMode = '1P';
+  let score1 = 0, score2 = 0;
+  const winScore = 7;
+  let winner = '';
+
+  const w = 800, h = 500;
+  let p1 = { y: 200, h: 90, w: 15, x: 20 };
+  let p2 = { y: 200, h: 90, w: 15, x: 765 };
+  let ball = { x: 400, y: 250, vx: 0, vy: 0, r: 8, baseSpeed: 5, speed: 5 };
+  let particles = [];
+  let shake = 0;
+  let keys = {};
+
+  p.setup = () => {
+    p.createCanvas(w, h);
+  };
+
+  p.draw = () => {
+    if (shake > 0) {
+      p.translate(p.random(-shake, shake), p.random(-shake, shake));
+      shake *= 0.9;
+      if (shake < 0.2) shake = 0;
+    }
+
+    p.background(15, 15, 23);
+    drawMidLine();
+
+    if (state === 'MENU') {
+      drawMenu();
+    } else if (state === 'PLAY') {
+      updateGame();
+      drawGame();
+    } else if (state === 'GAMEOVER') {
+      drawGameOver();
+    }
+
+    updateAndDrawParticles();
+  };
+
+  function drawMidLine() {
+    p.stroke(255, 255, 255, 30);
+    p.strokeWeight(2);
+    for (let i = 0; i < h; i += 30) {
+      p.line(w / 2, i, w / 2, i + 15);
+    }
+  }
+
+  function drawMenu() {
+    p.textAlign(p.CENTER, p.CENTER);
+    p.fill(59, 130, 246);
+    p.textSize(36);
+    p.textStyle(p.BOLD);
+    p.text("ARCADE PONG", w / 2, 120);
+
+    p.fill(200);
+    p.textSize(18);
+    p.textStyle(p.NORMAL);
+    p.text(`Modo: ${gameMode === '1P' ? '1 Jugador vs CPU' : '2 Jugadores Local'} (Presiona M para cambiar)`, w / 2, 220);
+    p.fill(34, 197, 94);
+    p.textSize(20);
+    p.text("Presiona ENTER o ESPACIO para Jugar", w / 2, 280);
+
+    p.fill(120);
+    p.textSize(14);
+    p.text("Controles J1: W / S  |  Controles J2: Flechas Arriba/Abajo", w / 2, 380);
+  }
+
+  function drawGame() {
+    p.fill(255, 255, 255, 70);
+    p.textSize(64);
+    p.textAlign(p.RIGHT, p.TOP);
+    p.text(score1, w / 2 - 50, 30);
+    p.textAlign(p.LEFT, p.TOP);
+    p.text(score2, w / 2 + 50, 30);
+
+    p.fill(34, 197, 94);
+    p.rect(p1.x, p1.y, p1.w, p1.h, 4);
+    p.fill(239, 68, 68);
+    p.rect(p2.x, p2.y, p2.w, p2.h, 4);
+
+    p.fill(255);
+    p.ellipse(ball.x, ball.y, ball.r * 2);
+  }
+
+  function drawGameOver() {
+    p.textAlign(p.CENTER, p.CENTER);
+    p.fill(239, 68, 68);
+    p.textSize(36);
+    p.text(winner, w / 2, 160);
+
+    p.fill(200);
+    p.textSize(20);
+    p.text(`Marcador Final: ${score1} - ${score2}`, w / 2, 220);
+    p.fill(59, 130, 246);
+    p.text("Presiona ENTER para volver al menú", w / 2, 300);
+  }
+
+  function updateGame() {
+    if (keys['w'] || keys[87]) p1.y -= 7; // W
+    if (keys['s'] || keys[83]) p1.y += 7; // S
+    p1.y = p.constrain(p1.y, 0, h - p1.h);
+
+    if (gameMode === '2P') {
+      if (keys[p.UP_ARROW] || keys[38]) p2.y -= 7;
+      if (keys[p.DOWN_ARROW] || keys[40]) p2.y += 7;
+    } else {
+      let targetY = ball.y - p2.h / 2;
+      let diff = targetY - p2.y;
+      if (p.abs(diff) > 5) {
+        p2.y += Math.sign(diff) * 4.5;
+      }
+    }
+    p2.y = p.constrain(p2.y, 0, h - p2.h);
+
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+
+    if (ball.y - ball.r <= 0) {
+      ball.y = ball.r;
+      ball.vy = -ball.vy;
+      playTone(300, 'triangle', 0.08);
+    } else if (ball.y + ball.r >= h) {
+      ball.y = h - ball.r;
+      ball.vy = -ball.vy;
+      playTone(300, 'triangle', 0.08);
+    }
+
+    if (ball.vx < 0 && ball.x - ball.r <= p1.x + p1.w && ball.x + ball.r >= p1.x) {
+      if (ball.y >= p1.y && ball.y <= p1.y + p1.h) {
+        let hitFactor = (ball.y - (p1.y + p1.h / 2)) / (p1.h / 2);
+        ball.speed = p.min(ball.speed * 1.05, 15);
+        ball.vx = ball.speed * p.cos(hitFactor * p.PI / 4);
+        ball.vy = ball.speed * p.sin(hitFactor * p.PI / 4);
+        ball.x = p1.x + p1.w + ball.r;
+        playTone(440, 'square', 0.1);
+        createHitParticles(ball.x, ball.y, '#22c55e');
+      }
+    }
+
+    if (ball.vx > 0 && ball.x + ball.r >= p2.x && ball.x - ball.r <= p2.x + p2.w) {
+      if (ball.y >= p2.y && ball.y <= p2.y + p2.h) {
+        let hitFactor = (ball.y - (p2.y + p2.h / 2)) / (p2.h / 2);
+        ball.speed = p.min(ball.speed * 1.05, 15);
+        ball.vx = -ball.speed * p.cos(hitFactor * p.PI / 4);
+        ball.vy = ball.speed * p.sin(hitFactor * p.PI / 4);
+        ball.x = p2.x - ball.r;
+        playTone(440, 'square', 0.1);
+        createHitParticles(ball.x, ball.y, '#ef4444');
+      }
+    }
+
+    if (ball.x < 0) {
+      score2++;
+      playTone(180, 'sawtooth', 0.35);
+      shake = 10;
+      checkWin();
+      if (state === 'PLAY') resetBall(1);
+    } else if (ball.x > w) {
+      score1++;
+      playTone(600, 'sine', 0.2);
+      shake = 10;
+      checkWin();
+      if (state === 'PLAY') resetBall(-1);
+    }
+  }
+
+  function resetBall(dir) {
+    ball.x = w / 2;
+    ball.y = h / 2;
+    ball.speed = ball.baseSpeed;
+    let angle = p.random(-p.PI / 6, p.PI / 6);
+    ball.vx = dir * ball.speed * p.cos(angle);
+    ball.vy = ball.speed * p.sin(angle);
+  }
+
+  function checkWin() {
+    if (score1 >= winScore) {
+      state = 'GAMEOVER';
+      winner = "¡GANADOR: JUGADOR 1!";
+      playTone(880, 'triangle', 0.4);
+    } else if (score2 >= winScore) {
+      state = 'GAMEOVER';
+      winner = gameMode === '2P' ? "¡GANADOR: JUGADOR 2!" : "¡GANADOR: CPU!";
+      playTone(220, 'triangle', 0.5);
+    }
+  }
+
+  function startGame() {
+    score1 = 0;
+    score2 = 0;
+    state = 'PLAY';
+    resetBall(p.random() > 0.5 ? 1 : -1);
+  }
+
+  p.keyPressed = () => {
+    keys[p.key.toLowerCase()] = true;
+    keys[p.keyCode] = true;
+
+    if (state === 'MENU') {
+      if (p.key === 'm' || p.key === 'M') {
+        gameMode = gameMode === '1P' ? '2P' : '1P';
+        playTone(350, 'sine', 0.05);
+      }
+      if (p.keyCode === p.ENTER || p.key === ' ') {
+        startGame();
+      }
+    } else if (state === 'GAMEOVER') {
+      if (p.keyCode === p.ENTER || p.key === ' ') {
+        state = 'MENU';
+      }
+    }
+  };
+
+  p.keyReleased = () => {
+    keys[p.key.toLowerCase()] = false;
+    keys[p.keyCode] = false;
+  };
+
+  function createHitParticles(x, y, color) {
+    for (let i = 0; i < 8; i++) {
+      particles.push({
+        x: x, y: y,
+        vx: p.random(-3, 3), vy: p.random(-3, 3),
+        life: 255, color: color
+      });
+    }
+  }
+
+  function updateAndDrawParticles() {
+    for (let i = particles.length - 1; i >= 0; i--) {
+      let part = particles[i];
+      part.x += part.vx;
+      part.y += part.vy;
+      part.life -= 15;
+      if (part.life <= 0) {
+        particles.splice(i, 1);
+      } else {
+        p.noStroke();
+        let c = p.color(part.color);
+        p.fill(p.red(c), p.green(c), p.blue(c), part.life);
+        p.ellipse(part.x, part.y, 5);
+      }
+    }
+  }
+};
+</file>
+
+<file path="src/components/sketchs/snakeSketch.js">
+// ponytail: self-contained p5.js instance mode sketch with native audio synth
+export const snakeSketch = (p) => {
+  let audioCtx = null;
+  function playTone(freq, type, duration) {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      let osc = audioCtx.createOscillator();
+      let gain = audioCtx.createGain();
+      osc.type = type || 'sine';
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    } catch (e) {}
+  }
+
+  let state = 'MENU';
+  let score = 0, highScore = 0;
+  
+  const cols = 40, rows = 25, cellSize = 20;
+  const w = cols * cellSize, h = rows * cellSize;
+
+  let snake = [];
+  let dir = { x: 1, y: 0 };
+  let nextDir = { x: 1, y: 0 };
+  let food = { x: 0, y: 0, isGold: false };
+  let frameDelay = 7;
+  let powerTimer = 0;
+  let particles = [];
+
+  p.setup = () => {
+    p.createCanvas(w, h);
+    loadHighScore();
+  };
+
+  p.draw = () => {
+    p.background(10, 15, 12);
+    drawGridLines();
+
+    if (state === 'MENU') {
+      drawMenu();
+    } else if (state === 'PLAY') {
+      updateGame();
+      drawGame();
+    } else if (state === 'GAMEOVER') {
+      drawGameOver();
+    }
+
+    updateAndDrawParticles();
+  };
+
+  function drawGridLines() {
+    p.stroke(34, 197, 94, 10);
+    p.strokeWeight(1);
+    for (let x = 0; x < w; x += cellSize) {
+      p.line(x, 0, x, h);
+    }
+    for (let y = 0; y < h; y += cellSize) {
+      p.line(0, y, w, y);
+    }
+  }
+
+  function drawMenu() {
+    p.textAlign(p.CENTER, p.CENTER);
+    p.fill(34, 197, 94);
+    p.textSize(36);
+    p.textStyle(p.BOLD);
+    p.text("NEON SNAKE", w / 2, 130);
+
+    p.fill(200);
+    p.textSize(18);
+    p.textStyle(p.NORMAL);
+    p.text(`Record Actual: ${highScore} pts`, w / 2, 210);
+    
+    p.fill(34, 197, 94);
+    p.textSize(20);
+    p.text("Presiona ENTER o ESPACIO para Jugar", w / 2, 280);
+
+    p.fill(120);
+    p.textSize(14);
+    p.text("Controles: Flechas o teclas WASD", w / 2, 380);
+  }
+
+  function drawGame() {
+    if (food.isGold) {
+      p.fill(234, 179, 8);
+      p.ellipse(food.x * cellSize + cellSize/2, food.y * cellSize + cellSize/2, cellSize * 0.95);
+    } else {
+      p.fill(239, 68, 68);
+      p.ellipse(food.x * cellSize + cellSize/2, food.y * cellSize + cellSize/2, cellSize * 0.8);
+    }
+
+    for (let i = 0; i < snake.length; i++) {
+      if (i === 0) {
+        p.fill(34, 197, 94);
+      } else {
+        p.fill(22, 163, 74, p.map(i, 0, snake.length, 255, 100));
+      }
+      p.rect(snake[i].x * cellSize + 1, snake[i].y * cellSize + 1, cellSize - 2, cellSize - 2, 4);
+    }
+
+    p.fill(255, 255, 255, 180);
+    p.textSize(16);
+    p.textAlign(p.LEFT, p.TOP);
+    p.text(`Puntos: ${score}`, 20, 20);
+    if (powerTimer > 0) {
+      p.fill(234, 179, 8);
+      p.text(`¡SUPER VELOCIDAD! (${Math.ceil(powerTimer / 60)}s)`, 150, 20);
+    }
+  }
+
+  function drawGameOver() {
+    p.textAlign(p.CENTER, p.CENTER);
+    p.fill(239, 68, 68);
+    p.textSize(36);
+    p.text("GAME OVER", w / 2, 160);
+
+    p.fill(200);
+    p.textSize(20);
+    p.text(`Puntuación final: ${score} pts`, w / 2, 220);
+    p.fill(34, 197, 94);
+    p.text("Presiona ENTER para continuar", w / 2, 300);
+  }
+
+  function updateGame() {
+    if (powerTimer > 0) {
+      powerTimer--;
+    }
+
+    let currentDelay = powerTimer > 0 ? 3 : frameDelay;
+    if (p.frameCount % currentDelay !== 0) return;
+
+    dir = nextDir;
+    let head = snake[0];
+    let newHead = { x: head.x + dir.x, y: head.y + dir.y };
+
+    if (newHead.x < 0) newHead.x = cols - 1;
+    if (newHead.x >= cols) newHead.x = 0;
+    if (newHead.y < 0) newHead.y = rows - 1;
+    if (newHead.y >= rows) newHead.y = 0;
+
+    for (let part of snake) {
+      if (newHead.x === part.x && newHead.y === part.y) {
+        endGame();
+        return;
+      }
+    }
+
+    snake.unshift(newHead);
+
+    if (newHead.x === food.x && newHead.y === food.y) {
+      eatFood();
+    } else {
+      snake.pop();
+    }
+  }
+
+  function eatFood() {
+    let points = food.isGold ? 5 : 1;
+    score += points;
+
+    if (food.isGold) {
+      powerTimer = 300;
+      playTone(600, 'sine', 0.25);
+      createExplosion(food.x * cellSize + cellSize/2, food.y * cellSize + cellSize/2, '#eab308');
+    } else {
+      playTone(450, 'triangle', 0.1);
+      createExplosion(food.x * cellSize + cellSize/2, food.y * cellSize + cellSize/2, '#22c55e');
+    }
+
+    spawnFood();
+  }
+
+  function spawnFood() {
+    let valid = false;
+    while (!valid) {
+      food.x = p.floor(p.random(cols));
+      food.y = p.floor(p.random(rows));
+      valid = true;
+      for (let part of snake) {
+        if (part.x === food.x && part.y === food.y) {
+          valid = false;
+          break;
+        }
+      }
+    }
+    food.isGold = p.random() < 0.15;
+  }
+
+  function initGame() {
+    snake = [
+      { x: 10, y: 12 },
+      { x: 9, y: 12 },
+      { x: 8, y: 12 }
+    ];
+    dir = { x: 1, y: 0 };
+    nextDir = { x: 1, y: 0 };
+    score = 0;
+    powerTimer = 0;
+    spawnFood();
+    state = 'PLAY';
+  }
+
+  function endGame() {
+    state = 'GAMEOVER';
+    playTone(150, 'sawtooth', 0.5);
+    if (score > highScore) {
+      highScore = score;
+      saveHighScore();
+    }
+  }
+
+  function loadHighScore() {
+    try {
+      let val = localStorage.getItem('arcade_snake_hs');
+      if (val) highScore = parseInt(val);
+    } catch (e) {}
+  }
+
+  function saveHighScore() {
+    try {
+      localStorage.setItem('arcade_snake_hs', highScore);
+    } catch (e) {}
+  }
+
+  p.keyPressed = () => {
+    if (state === 'MENU') {
+      if (p.keyCode === p.ENTER || p.key === ' ') {
+        initGame();
+      }
+    } else if (state === 'GAMEOVER') {
+      if (p.keyCode === p.ENTER || p.key === ' ') {
+        state = 'MENU';
+      }
+    } else if (state === 'PLAY') {
+      if ((p.keyCode === p.UP_ARROW || p.key === 'w' || p.key === 'W') && dir.y === 0) {
+        nextDir = { x: 0, y: -1 };
+      } else if ((p.keyCode === p.DOWN_ARROW || p.key === 's' || p.key === 'S') && dir.y === 0) {
+        nextDir = { x: 0, y: 1 };
+      } else if ((p.keyCode === p.LEFT_ARROW || p.key === 'a' || p.key === 'A') && dir.x === 0) {
+        nextDir = { x: -1, y: 0 };
+      } else if ((p.keyCode === p.RIGHT_ARROW || p.key === 'd' || p.key === 'D') && dir.x === 0) {
+        nextDir = { x: 1, y: 0 };
+      }
+    }
+  };
+
+  function createExplosion(x, y, color) {
+    for (let i = 0; i < 12; i++) {
+      particles.push({
+        x: x, y: y,
+        vx: p.random(-4, 4), vy: p.random(-4, 4),
+        life: 255, color: color
+      });
+    }
+  }
+
+  function updateAndDrawParticles() {
+    for (let i = particles.length - 1; i >= 0; i--) {
+      let part = particles[i];
+      part.x += part.vx;
+      part.y += part.vy;
+      part.life -= 15;
+      if (part.life <= 0) {
+        particles.splice(i, 1);
+      } else {
+        p.noStroke();
+        let c = p.color(part.color);
+        p.fill(p.red(c), p.green(c), p.blue(c), part.life);
+        p.ellipse(part.x, part.y, 6);
+      }
+    }
+  }
+};
+</file>
+
+<file path="src/components/sketchs/squareSketch.js">
+export const squareSketch = (p) => {
+  p.setup = () => {
+    p.createCanvas(1000, 500);
+  };
+  p.draw = () => {
+    p.background(30);
+    p.fill(239, 68, 68); // Rojo
+    p.rectMode(p.CENTER);
+    p.rect(p.mouseX, p.mouseY, 60, 60);
+  };
+};
+</file>
+
+<file path="src/components/theme-provider.jsx">
+import { createContext, useContext, useEffect, useState } from "react"
+
+const initialState = {
+  theme: "system",
+  setTheme: () => null,
+}
+
+const ThemeProviderContext = createContext(initialState)
+
+export function ThemeProvider({
+  children,
+  defaultTheme = "system",
+  storageKey = "vite-ui-theme",
+  ...props
+}) {
+  const [theme, setTheme] = useState(
+    () => localStorage.getItem(storageKey) || defaultTheme
+  )
+
+  useEffect(() => {
+    const root = window.document.documentElement
+
+    root.classList.remove("light", "dark")
+
+    if (theme === "system") {
+      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light"
+
+      root.classList.add(systemTheme)
+      return
+    }
+
+    root.classList.add(theme)
+  }, [theme])
+
+  const value = {
+    theme,
+    setTheme: (theme) => {
+      localStorage.setItem(storageKey, theme)
+      setTheme(theme)
+    },
+  }
+
+  return (
+    <ThemeProviderContext.Provider {...props} value={value}>
+      {children}
+    </ThemeProviderContext.Provider>
+  )
+}
+
+export const useTheme = () => {
+  const context = useContext(ThemeProviderContext)
+
+  if (context === undefined) {
+    throw new Error("useTheme must be used within a ThemeProvider")
+  }
+
+  return context
+}
+</file>
+
+<file path="src/components/ui/button.jsx">
+import { Button as ButtonPrimitive } from "@base-ui/react/button"
+import { cva } from "class-variance-authority";
+
+import { cn } from "@/lib/utils"
+
+const buttonVariants = cva(
+  "group/button inline-flex shrink-0 items-center justify-center rounded-md border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/80",
+        outline:
+          "border-border bg-background shadow-xs hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+        ghost:
+          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+        destructive:
+          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
+        link: "text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        default:
+          "h-9 gap-1.5 px-2.5 in-data-[slot=button-group]:rounded-md has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+        xs: "h-6 gap-1 rounded-[min(var(--radius-md),8px)] px-2 text-xs in-data-[slot=button-group]:rounded-md has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
+        sm: "h-8 gap-1 rounded-[min(var(--radius-md),10px)] px-2.5 in-data-[slot=button-group]:rounded-md has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5",
+        lg: "h-10 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+        icon: "size-9",
+        "icon-xs":
+          "size-6 rounded-[min(var(--radius-md),8px)] in-data-[slot=button-group]:rounded-md [&_svg:not([class*='size-'])]:size-3",
+        "icon-sm":
+          "size-8 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-md",
+        "icon-lg": "size-10",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+)
+
+function Button({
+  className,
+  variant = "default",
+  size = "default",
+  ...props
+}) {
+  return (
+    <ButtonPrimitive
+      data-slot="button"
+      className={cn(buttonVariants({ variant, size, className }))}
+      {...props} />
+  );
+}
+
+export { Button, buttonVariants }
+</file>
+
+<file path="src/components/ui/dropdown-menu.jsx">
+import * as React from "react"
+import { Menu as MenuPrimitive } from "@base-ui/react/menu"
+
+import { cn } from "@/lib/utils"
+import { ChevronRightIcon, CheckIcon } from "lucide-react"
+
+function DropdownMenu({
+  ...props
+}) {
+  return <MenuPrimitive.Root data-slot="dropdown-menu" {...props} />;
+}
+
+function DropdownMenuPortal({
+  ...props
+}) {
+  return <MenuPrimitive.Portal data-slot="dropdown-menu-portal" {...props} />;
+}
+
+function DropdownMenuTrigger({
+  ...props
+}) {
+  return <MenuPrimitive.Trigger data-slot="dropdown-menu-trigger" {...props} />;
+}
+
+function DropdownMenuContent({
+  align = "start",
+  alignOffset = 0,
+  side = "bottom",
+  sideOffset = 4,
+  className,
+  ...props
+}) {
+  return (
+    <MenuPrimitive.Portal>
+      <MenuPrimitive.Positioner
+        className="isolate z-50 outline-none"
+        align={align}
+        alignOffset={alignOffset}
+        side={side}
+        sideOffset={sideOffset}>
+        <MenuPrimitive.Popup
+          data-slot="dropdown-menu-content"
+          className={cn(
+            "z-50 max-h-(--available-height) w-(--anchor-width) min-w-32 origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-md bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 outline-none data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:overflow-hidden data-closed:fade-out-0 data-closed:zoom-out-95",
+            className
+          )}
+          {...props} />
+      </MenuPrimitive.Positioner>
+    </MenuPrimitive.Portal>
+  );
+}
+
+function DropdownMenuGroup({
+  ...props
+}) {
+  return <MenuPrimitive.Group data-slot="dropdown-menu-group" {...props} />;
+}
+
+function DropdownMenuLabel({
+  className,
+  inset,
+  ...props
+}) {
+  return (
+    <MenuPrimitive.GroupLabel
+      data-slot="dropdown-menu-label"
+      data-inset={inset}
+      className={cn(
+        "px-2 py-1.5 text-xs font-medium text-muted-foreground data-inset:pl-8",
+        className
+      )}
+      {...props} />
+  );
+}
+
+function DropdownMenuItem({
+  className,
+  inset,
+  variant = "default",
+  ...props
+}) {
+  return (
+    <MenuPrimitive.Item
+      data-slot="dropdown-menu-item"
+      data-inset={inset}
+      data-variant={variant}
+      className={cn(
+        "group/dropdown-menu-item relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-inset:pl-8 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 data-[variant=destructive]:focus:text-destructive dark:data-[variant=destructive]:focus:bg-destructive/20 data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 data-[variant=destructive]:*:[svg]:text-destructive",
+        className
+      )}
+      {...props} />
+  );
+}
+
+function DropdownMenuSub({
+  ...props
+}) {
+  return <MenuPrimitive.SubmenuRoot data-slot="dropdown-menu-sub" {...props} />;
+}
+
+function DropdownMenuSubTrigger({
+  className,
+  inset,
+  children,
+  ...props
+}) {
+  return (
+    <MenuPrimitive.SubmenuTrigger
+      data-slot="dropdown-menu-sub-trigger"
+      data-inset={inset}
+      className={cn(
+        "flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-inset:pl-8 data-popup-open:bg-accent data-popup-open:text-accent-foreground data-open:bg-accent data-open:text-accent-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        className
+      )}
+      {...props}>
+      {children}
+      <ChevronRightIcon className="ml-auto" />
+    </MenuPrimitive.SubmenuTrigger>
+  );
+}
+
+function DropdownMenuSubContent({
+  align = "start",
+  alignOffset = -3,
+  side = "right",
+  sideOffset = 0,
+  className,
+  ...props
+}) {
+  return (
+    <DropdownMenuContent
+      data-slot="dropdown-menu-sub-content"
+      className={cn(
+        "w-auto min-w-24 rounded-md bg-popover p-1 text-popover-foreground shadow-lg ring-1 ring-foreground/10 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+        className
+      )}
+      align={align}
+      alignOffset={alignOffset}
+      side={side}
+      sideOffset={sideOffset}
+      {...props} />
+  );
+}
+
+function DropdownMenuCheckboxItem({
+  className,
+  children,
+  checked,
+  inset,
+  ...props
+}) {
+  return (
+    <MenuPrimitive.CheckboxItem
+      data-slot="dropdown-menu-checkbox-item"
+      data-inset={inset}
+      className={cn(
+        "relative flex cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground focus:**:text-accent-foreground data-inset:pl-8 data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        className
+      )}
+      checked={checked}
+      {...props}>
+      <span
+        className="pointer-events-none absolute right-2 flex items-center justify-center"
+        data-slot="dropdown-menu-checkbox-item-indicator">
+        <MenuPrimitive.CheckboxItemIndicator>
+          <CheckIcon />
+        </MenuPrimitive.CheckboxItemIndicator>
+      </span>
+      {children}
+    </MenuPrimitive.CheckboxItem>
+  );
+}
+
+function DropdownMenuRadioGroup({
+  ...props
+}) {
+  return (<MenuPrimitive.RadioGroup data-slot="dropdown-menu-radio-group" {...props} />);
+}
+
+function DropdownMenuRadioItem({
+  className,
+  children,
+  inset,
+  ...props
+}) {
+  return (
+    <MenuPrimitive.RadioItem
+      data-slot="dropdown-menu-radio-item"
+      data-inset={inset}
+      className={cn(
+        "relative flex cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground focus:**:text-accent-foreground data-inset:pl-8 data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        className
+      )}
+      {...props}>
+      <span
+        className="pointer-events-none absolute right-2 flex items-center justify-center"
+        data-slot="dropdown-menu-radio-item-indicator">
+        <MenuPrimitive.RadioItemIndicator>
+          <CheckIcon />
+        </MenuPrimitive.RadioItemIndicator>
+      </span>
+      {children}
+    </MenuPrimitive.RadioItem>
+  );
+}
+
+function DropdownMenuSeparator({
+  className,
+  ...props
+}) {
+  return (
+    <MenuPrimitive.Separator
+      data-slot="dropdown-menu-separator"
+      className={cn("-mx-1 my-1 h-px bg-border", className)}
+      {...props} />
+  );
+}
+
+function DropdownMenuShortcut({
+  className,
+  ...props
+}) {
+  return (
+    <span
+      data-slot="dropdown-menu-shortcut"
+      className={cn(
+        "ml-auto text-xs tracking-widest text-muted-foreground group-focus/dropdown-menu-item:text-accent-foreground",
+        className
+      )}
+      {...props} />
+  );
+}
+
+export {
+  DropdownMenu,
+  DropdownMenuPortal,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
+  DropdownMenuItem,
+  DropdownMenuCheckboxItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+}
+</file>
+
+<file path="src/lib/utils.js">
+import { clsx } from "clsx";
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs) {
+  return twMerge(clsx(inputs));
+}
+</file>
+
+<file path="src/main.jsx">
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './index.css'
+import App from './App.jsx'
+
+createRoot(document.getElementById('root')).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
+</file>
+
+<file path="vite.config.js">
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
+import path from 'path'
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+  server: {
+    watch: {
+      usePolling: true,
+    },
+  },
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src")
+    },
+  },
+})
+</file>
+
+<file path=".gitignore">
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+.agents/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+</file>
+
+<file path="index.html">
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Programación Gráfica con p5.js — juegos arcade interactivos: Pong, Snake y Breakout." />
+    <title>Programación Gráfica — Juegos Arcade</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
+</file>
+
+<file path="src/components/P5Canvas.jsx">
+import { useEffect, useRef } from "react";
+import p5 from "p5";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Joystick } from "lucide-react";
+
+export default function P5Canvas({ sketchCode, games = [], onChangeSketch }) {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    if (!canvasRef.current || typeof sketchCode !== "function") return;
+
+    const sketchContenedor = (p) => {
+      sketchCode(p);
+    };
+
+    const myP5 = new p5(sketchContenedor, canvasRef.current);
+
+    return () => {
+      myP5.remove();
+    };
+  }, [sketchCode]);
+
+  /* ── Empty state / Main Menu ── */
+  if (!sketchCode) {
+    return (
+      <div className="arcade-empty">
+        {/* Joystick icon */}
+        <span className="arcade-empty-icon" role="img" aria-label="joystick">
+          🕹️
+        </span>
+
+        {/* Title */}
+        <p className="arcade-empty-title glow-cyan">BIENVENIDO A ARCANE NEXUS</p>
+        <p className="arcade-empty-sub">Selecciona un juego para comenzar</p>
+
+        {/* ── Centered game selector ── */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              id="menu-game-selector-btn"
+              className="arcade-btn-primary mt-4 cursor-pointer flex items-center gap-2 px-8 py-5 text-sm"
+            >
+              <Joystick className="h-4 w-4" />
+              SELECCIONAR JUEGO
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            className="bg-background text-foreground border border-border min-w-[200px]"
+            align="center"
+          >
+            {games.map((g) => (
+              <DropdownMenuItem
+                key={g.name}
+                id={`menu-game-${g.name.toLowerCase().replace(/\s+/g, "-")}`}
+                className="cursor-pointer"
+                onClick={() => onChangeSketch(g.sketch, g.name)}
+              >
+                {g.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        
+      </div>
+    );
+  }
+
+  /* ── Active canvas ── */
+  return (
+    <div className="arcade-canvas-wrap relative">
+      {/* Corner decorators */}
+      <span className="canvas-corner tl" aria-hidden="true" />
+      <span className="canvas-corner tr" aria-hidden="true" />
+      <span className="canvas-corner bl" aria-hidden="true" />
+      <span className="canvas-corner br" aria-hidden="true" />
+
+      <div ref={canvasRef} />
+    </div>
+  );
+}
+</file>
+
+<file path="src/App.jsx">
+import { useState } from "react"
+
+import Navbar from './components/navbar'
+import P5Canvas from '@/components/P5Canvas'
+import { ThemeProvider } from "@/components/theme-provider"
+
+import { pongSketch }     from "@/components/sketchs/pongSketch";
+import { snakeSketch }    from "@/components/sketchs/snakeSketch";
+import { breakoutSketch } from "@/components/sketchs/breakoutSketch";
+
+export const GAMES = [
+  { label: "Pong Classic",      sketch: pongSketch,     name: "Pong Classic" },
+  { label: "Neon Snake",        sketch: snakeSketch,     name: "Neon Snake" },
+  { label: "Galactic Breakout", sketch: breakoutSketch,  name: "Galactic Breakout" },
+];
+
+function App() {
+  const [sketch, setSketch]         = useState(null)
+  const [sketchName, setSketchName] = useState("")
+
+  const handleChangeSketch = (newSketch, name) => {
+    setSketch(() => newSketch)
+    setSketchName(name)
+  }
+
+  const handleBack = () => {
+    setSketch(null)
+    setSketchName("")
+  }
+
+  return (
+    <ThemeProvider defaultTheme="dark" storageKey="arcade-ui-theme">
+      <div className="min-h-screen min-w-full bg-background text-foreground transition-colors duration-300">
+        <Navbar
+          activeName={sketchName}
+          onChangeSketch={handleChangeSketch}
+          onBack={handleBack}
+        />
+
+        <main className="flex flex-1 flex-row px-4 py-8">
+          <div className="flex flex-1 items-center justify-center">
+            <P5Canvas
+              sketchCode={sketch}
+              games={GAMES}
+              onChangeSketch={handleChangeSketch}
+            />
+          </div>
+        </main>
+      </div>
+    </ThemeProvider>
+  )
+}
+
+export default App
+</file>
+
+<file path="src/components/navbar.jsx">
+import { Button } from "@/components/ui/button"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Sun, Moon, Gamepad2, ChevronLeft } from "lucide-react";
+import { useTheme } from "@/components/theme-provider"
+
+import { pongSketch }     from "@/components/sketchs/pongSketch";
+import { snakeSketch }    from "@/components/sketchs/snakeSketch";
+import { breakoutSketch } from "@/components/sketchs/breakoutSketch";
+
+const GAMES = [
+    { label: "Pong Classic",      sketch: pongSketch,     name: "Pong Classic" },
+    { label: "Neon Snake",        sketch: snakeSketch,     name: "Neon Snake" },
+    { label: "Galactic Breakout", sketch: breakoutSketch,  name: "Galactic Breakout" },
+];
+
+export default function Navbar({ activeName, onChangeSketch, onBack }) {
+    const { setTheme } = useTheme()
+
+    return (
+        <header className="arcade-navbar sticky top-0 z-20 px-4 py-3 transition-all duration-300">
+            <div className="mx-auto flex items-center justify-between gap-4 px-6">
+
+                {/* ── Brand ── */}
+                <div className="flex items-center gap-3">
+                    <Gamepad2 className="h-5 w-5 text-primary dark:drop-shadow-[0_0_8px_oklch(0.85_0.22_195/80%)]" />
+                    <h1 className="arcade-brand text-foreground">
+                        PROGRAMACIÓN GRÁFICA
+                        <span className="hidden sm:inline text-muted-foreground font-normal text-sm ml-2 tracking-widest">
+                            — ARCANE NEXUS
+                        </span>
+                    </h1>
+                </div>
+
+                {/* ── Controls ── */}
+                <div className="flex items-center gap-3">
+
+                    {/* ── Back to menu button (only when a game is active) ── */}
+                    {activeName && (
+                        <Button
+                            id="back-to-menu-btn"
+                            variant="outline"
+                            className="arcade-btn-back cursor-pointer flex items-center gap-1.5"
+                            onClick={onBack}
+                        >
+                            <ChevronLeft className="h-3.5 w-3.5" />
+                            MENÚ
+                        </Button>
+                    )}
+
+                    {/* Active game badge */}
+                    {activeName && (
+                        <span className="game-badge">
+                            {activeName}
+                        </span>
+                    )}
+
+                    {/* Game selector (only when game is active) */}
+                    {activeName && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    id="game-selector-btn"
+                                    variant="outline"
+                                    className="arcade-btn cursor-pointer"
+                                >
+                                    CAMBIAR JUEGO
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                                className="bg-background text-foreground border border-border"
+                                align="end"
+                            >
+                                {GAMES.map((g) => (
+                                    <DropdownMenuItem
+                                        key={g.name}
+                                        id={`game-${g.name.toLowerCase().replace(/\s+/g, '-')}`}
+                                        className="cursor-pointer"
+                                        onClick={() => onChangeSketch(g.sketch, g.name)}
+                                    >
+                                        {g.label}
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
+
+                    {/* Theme toggle */}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                id="theme-toggle-btn"
+                                variant="outline"
+                                size="icon"
+                                className="arcade-btn-icon cursor-pointer"
+                            >
+                                <Sun className="h-[1.1rem] w-[1.1rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
+                                <Moon className="absolute h-[1.1rem] w-[1.1rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
+                                <span className="sr-only">Cambiar tema</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem id="theme-light" onClick={() => setTheme("light")}>Claro</DropdownMenuItem>
+                            <DropdownMenuItem id="theme-dark"  onClick={() => setTheme("dark")}>Oscuro</DropdownMenuItem>
+                            <DropdownMenuItem id="theme-sys"   onClick={() => setTheme("system")}>Sistema</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+            </div>
+        </header>
+    );
+}
+</file>
+
+<file path="src/index.css">
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    --font-heading: 'Orbitron', monospace;
+    --font-sans: 'Rajdhani', sans-serif;
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+
+    /* Arcade Neon Tokens */
+    --neon-cyan: oklch(0.85 0.22 195);
+    --neon-magenta: oklch(0.72 0.28 320);
+    --neon-yellow: oklch(0.92 0.22 95);
+    --neon-green: oklch(0.82 0.22 145);
+    --neon-orange: oklch(0.78 0.24 45);
+    --deep-space: oklch(0.07 0.02 265);
+    --space-mid: oklch(0.11 0.025 265);
+    --space-card: oklch(0.14 0.02 265);
+}
+
+/* ── Light Theme ── */
+:root {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    --primary: oklch(0.205 0 0);
+    --primary-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.97 0 0);
+    --secondary-foreground: oklch(0.205 0 0);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --accent: oklch(0.97 0 0);
+    --accent-foreground: oklch(0.205 0 0);
+    --destructive: oklch(0.577 0.245 27.325);
+    --border: oklch(0.922 0 0);
+    --input: oklch(0.922 0 0);
+    --ring: oklch(0.708 0 0);
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --radius: 0.625rem;
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar-primary: oklch(0.205 0 0);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.97 0 0);
+    --sidebar-accent-foreground: oklch(0.205 0 0);
+    --sidebar-border: oklch(0.922 0 0);
+    --sidebar-ring: oklch(0.708 0 0);
+}
+
+/* ── Dark / Arcade Neon Theme ── */
+.dark {
+    --background: oklch(0.07 0.02 265);
+    --foreground: oklch(0.94 0.015 195);
+    --card: oklch(0.11 0.025 265);
+    --card-foreground: oklch(0.94 0.015 195);
+    --popover: oklch(0.11 0.025 265);
+    --popover-foreground: oklch(0.94 0.015 195);
+    --primary: oklch(0.85 0.22 195);
+    --primary-foreground: oklch(0.07 0.02 265);
+    --secondary: oklch(0.15 0.03 265);
+    --secondary-foreground: oklch(0.85 0.22 195);
+    --muted: oklch(0.15 0.03 265);
+    --muted-foreground: oklch(0.60 0.06 265);
+    --accent: oklch(0.72 0.28 320);
+    --accent-foreground: oklch(0.07 0.02 265);
+    --destructive: oklch(0.70 0.22 27);
+    --border: oklch(0.85 0.22 195 / 18%);
+    --input: oklch(0.85 0.22 195 / 12%);
+    --ring: oklch(0.85 0.22 195 / 60%);
+    --chart-1: oklch(0.85 0.22 195);
+    --chart-2: oklch(0.72 0.28 320);
+    --chart-3: oklch(0.82 0.22 145);
+    --chart-4: oklch(0.78 0.24 45);
+    --chart-5: oklch(0.92 0.22 95);
+    --sidebar: oklch(0.09 0.025 265);
+    --sidebar-foreground: oklch(0.94 0.015 195);
+    --sidebar-primary: oklch(0.85 0.22 195);
+    --sidebar-primary-foreground: oklch(0.07 0.02 265);
+    --sidebar-accent: oklch(0.15 0.03 265);
+    --sidebar-accent-foreground: oklch(0.85 0.22 195);
+    --sidebar-border: oklch(0.85 0.22 195 / 15%);
+    --sidebar-ring: oklch(0.85 0.22 195 / 60%);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    box-sizing: border-box;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px;
+    letter-spacing: 0.02em;
+  }
+  html {
+    @apply font-sans;
+    scroll-behavior: smooth;
+  }
+  h1, h2, h3 {
+    font-family: 'Orbitron', monospace;
+    letter-spacing: 0.08em;
+  }
+}
+
+/* ══════════════════════════════════════════
+   ARCADE BACKGROUND — grid + noise overlay
+   ══════════════════════════════════════════ */
+.dark body,
+.dark #root {
+  background-image:
+    linear-gradient(oklch(0.85 0.22 195 / 4%) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.85 0.22 195 / 4%) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: center center;
+}
+
+/* ══════════════════════════════════════════
+   GLOW UTILITIES
+   ══════════════════════════════════════════ */
+.glow-cyan {
+  text-shadow:
+    0 0 8px oklch(0.85 0.22 195 / 80%),
+    0 0 20px oklch(0.85 0.22 195 / 50%),
+    0 0 40px oklch(0.85 0.22 195 / 30%);
+}
+.glow-magenta {
+  text-shadow:
+    0 0 8px oklch(0.72 0.28 320 / 80%),
+    0 0 20px oklch(0.72 0.28 320 / 50%),
+    0 0 40px oklch(0.72 0.28 320 / 25%);
+}
+.glow-yellow {
+  text-shadow:
+    0 0 8px oklch(0.92 0.22 95 / 80%),
+    0 0 20px oklch(0.92 0.22 95 / 50%),
+    0 0 40px oklch(0.92 0.22 95 / 25%);
+}
+.box-glow-cyan {
+  box-shadow:
+    0 0 12px oklch(0.85 0.22 195 / 40%),
+    0 0 30px oklch(0.85 0.22 195 / 20%),
+    inset 0 0 12px oklch(0.85 0.22 195 / 8%);
+}
+.box-glow-magenta {
+  box-shadow:
+    0 0 12px oklch(0.72 0.28 320 / 40%),
+    0 0 30px oklch(0.72 0.28 320 / 20%),
+    inset 0 0 12px oklch(0.72 0.28 320 / 8%);
+}
+
+/* ══════════════════════════════════════════
+   NAVBAR — dark mode arcade bar
+   ══════════════════════════════════════════ */
+.dark .arcade-navbar {
+  background: oklch(0.09 0.025 265 / 92%);
+  border-bottom: 1px solid oklch(0.85 0.22 195 / 25%);
+  box-shadow:
+    0 1px 0 oklch(0.85 0.22 195 / 15%),
+    0 4px 20px oklch(0.07 0.02 265 / 80%);
+  backdrop-filter: blur(16px) saturate(180%);
+}
+.arcade-navbar {
+  transition: background 0.3s, box-shadow 0.3s;
+}
+
+/* Brand title */
+.dark .arcade-brand {
+  font-family: 'Orbitron', monospace;
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.12em;
+  color: oklch(0.85 0.22 195);
+  text-shadow:
+    0 0 10px oklch(0.85 0.22 195 / 70%),
+    0 0 25px oklch(0.85 0.22 195 / 40%);
+}
+.arcade-brand {
+  font-family: 'Orbitron', monospace;
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.12em;
+}
+
+/* ══════════════════════════════════════════
+   BUTTONS — neon outline style
+   ══════════════════════════════════════════ */
+.dark .arcade-btn {
+  background: transparent;
+  border: 1px solid oklch(0.85 0.22 195 / 50%);
+  color: oklch(0.85 0.22 195);
+  font-family: 'Orbitron', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 8px oklch(0.85 0.22 195 / 20%);
+}
+.dark .arcade-btn:hover {
+  background: oklch(0.85 0.22 195 / 12%);
+  border-color: oklch(0.85 0.22 195 / 90%);
+  box-shadow:
+    0 0 16px oklch(0.85 0.22 195 / 50%),
+    0 0 32px oklch(0.85 0.22 195 / 25%);
+  color: oklch(0.95 0.18 195);
+}
+.dark .arcade-btn-icon {
+  background: transparent;
+  border: 1px solid oklch(0.72 0.28 320 / 50%);
+  color: oklch(0.72 0.28 320);
+  transition: all 0.2s ease;
+  box-shadow: 0 0 8px oklch(0.72 0.28 320 / 15%);
+}
+.dark .arcade-btn-icon:hover {
+  background: oklch(0.72 0.28 320 / 12%);
+  border-color: oklch(0.72 0.28 320);
+  box-shadow:
+    0 0 16px oklch(0.72 0.28 320 / 50%),
+    0 0 32px oklch(0.72 0.28 320 / 25%);
+}
+
+/* CTA button — centered menu selector */
+.dark .arcade-btn-primary {
+  background: oklch(0.85 0.22 195 / 12%);
+  border: 1px solid oklch(0.85 0.22 195 / 70%);
+  color: oklch(0.90 0.20 195);
+  font-family: 'Orbitron', monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transition: all 0.25s ease;
+  box-shadow:
+    0 0 14px oklch(0.85 0.22 195 / 30%),
+    0 0 30px oklch(0.85 0.22 195 / 12%);
+}
+.dark .arcade-btn-primary:hover {
+  background: oklch(0.85 0.22 195 / 22%);
+  border-color: oklch(0.85 0.22 195);
+  color: oklch(0.97 0.15 195);
+  box-shadow:
+    0 0 22px oklch(0.85 0.22 195 / 60%),
+    0 0 50px oklch(0.85 0.22 195 / 25%);
+  transform: translateY(-1px);
+}
+.arcade-btn-primary {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transition: all 0.25s ease;
+}
+.arcade-btn-primary:hover {
+  transform: translateY(-1px);
+}
+
+/* Back button — navbar, returns to main menu */
+.dark .arcade-btn-back {
+  background: transparent;
+  border: 1px solid oklch(0.72 0.28 320 / 45%);
+  color: oklch(0.72 0.28 320);
+  font-family: 'Orbitron', monospace;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 8px oklch(0.72 0.28 320 / 15%);
+}
+.dark .arcade-btn-back:hover {
+  background: oklch(0.72 0.28 320 / 12%);
+  border-color: oklch(0.72 0.28 320);
+  color: oklch(0.88 0.22 320);
+  box-shadow:
+    0 0 16px oklch(0.72 0.28 320 / 50%),
+    0 0 32px oklch(0.72 0.28 320 / 20%);
+}
+.arcade-btn-back {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+}
+
+/* ══════════════════════════════════════════
+   CANVAS CONTAINER
+   ══════════════════════════════════════════ */
+.dark .arcade-canvas-wrap {
+  border: 1px solid oklch(0.85 0.22 195 / 30%);
+  border-radius: 8px;
+  box-shadow:
+    0 0 20px oklch(0.85 0.22 195 / 25%),
+    0 0 60px oklch(0.85 0.22 195 / 10%),
+    0 8px 40px oklch(0.07 0.02 265 / 60%);
+  overflow: hidden;
+  position: relative;
+}
+/* Scanline overlay */
+.dark .arcade-canvas-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    oklch(0.07 0.02 265 / 8%) 2px,
+    oklch(0.07 0.02 265 / 8%) 4px
+  );
+  pointer-events: none;
+  z-index: 10;
+}
+.arcade-canvas-wrap {
+  border: 1px solid oklch(0.7 0 0 / 30%);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* ══════════════════════════════════════════
+   EMPTY STATE — "Insert Coin" prompt
+   ══════════════════════════════════════════ */
+.arcade-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 4rem 2rem;
+  animation: fadeIn 0.6s ease both;
+}
+.dark .arcade-empty-icon {
+  font-size: 5rem;
+  filter: drop-shadow(0 0 20px oklch(0.72 0.28 320 / 60%));
+  animation: pulse-icon 2.5s ease-in-out infinite;
+}
+@keyframes pulse-icon {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 20px oklch(0.72 0.28 320 / 60%)); }
+  50% { transform: scale(1.08); filter: drop-shadow(0 0 30px oklch(0.72 0.28 320 / 90%)); }
+}
+.dark .arcade-empty-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.8rem;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  color: oklch(0.85 0.22 195);
+  text-shadow:
+    0 0 10px oklch(0.85 0.22 195 / 80%),
+    0 0 25px oklch(0.85 0.22 195 / 40%);
+}
+.dark .arcade-empty-sub {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: oklch(0.60 0.06 265);
+  letter-spacing: 0.05em;
+}
+.arcade-empty-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.8rem;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+}
+
+/* ══════════════════════════════════════════
+   DROPDOWN — neon menu
+   ══════════════════════════════════════════ */
+.dark [data-radix-popper-content-wrapper] [role="menu"],
+.dark [data-radix-popper-content-wrapper] [role="listbox"] {
+  background: oklch(0.10 0.025 265);
+  border: 1px solid oklch(0.85 0.22 195 / 30%);
+  box-shadow:
+    0 0 20px oklch(0.85 0.22 195 / 20%),
+    0 8px 32px oklch(0.07 0.02 265 / 80%);
+}
+.dark [role="menuitem"] {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  color: oklch(0.80 0.05 265);
+  transition: all 0.15s;
+}
+.dark [role="menuitem"]:hover,
+.dark [role="menuitem"]:focus {
+  background: oklch(0.85 0.22 195 / 10%);
+  color: oklch(0.85 0.22 195);
+  text-shadow: 0 0 8px oklch(0.85 0.22 195 / 60%);
+}
+
+/* ══════════════════════════════════════════
+   GAME BADGE (active game indicator)
+   ══════════════════════════════════════════ */
+.dark .game-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: oklch(0.85 0.22 195 / 10%);
+  border: 1px solid oklch(0.85 0.22 195 / 35%);
+  border-radius: 4px;
+  padding: 0.15rem 0.75rem;
+  font-family: 'Orbitron', monospace;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: oklch(0.85 0.22 195);
+}
+.dark .game-badge::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: oklch(0.82 0.22 145);
+  box-shadow: 0 0 6px oklch(0.82 0.22 145);
+  animation: blink-dot 1.2s ease-in-out infinite;
+}
+@keyframes blink-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* ══════════════════════════════════════════
+   ANIMATIONS
+   ══════════════════════════════════════════ */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes glitch-flicker {
+  0%, 96%, 100% { opacity: 1; }
+  97% { opacity: 0.85; transform: translateX(1px); }
+  98% { opacity: 0.9; transform: translateX(-1px); }
+  99% { opacity: 1; transform: translateX(0); }
+}
+.dark .arcade-brand {
+  animation: glitch-flicker 6s ease-in-out infinite;
+}
+
+/* ══════════════════════════════════════════
+   CORNER DECORATIONS for canvas
+   ══════════════════════════════════════════ */
+.dark .canvas-corner {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  z-index: 20;
+}
+.dark .canvas-corner::before,
+.dark .canvas-corner::after {
+  content: '';
+  position: absolute;
+  background: oklch(0.85 0.22 195);
+  box-shadow: 0 0 6px oklch(0.85 0.22 195 / 80%);
+}
+.dark .canvas-corner::before { width: 100%; height: 2px; top: 0; }
+.dark .canvas-corner::after  { width: 2px; height: 100%; top: 0; }
+
+.dark .canvas-corner.tl { top: 0; left: 0; }
+.dark .canvas-corner.tr { top: 0; right: 0; transform: scaleX(-1); }
+.dark .canvas-corner.bl { bottom: 0; left: 0; transform: scaleY(-1); }
+.dark .canvas-corner.br { bottom: 0; right: 0; transform: scale(-1); }
+</file>
+
+</files>

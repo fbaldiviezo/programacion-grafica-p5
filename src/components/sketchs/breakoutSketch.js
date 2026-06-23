@@ -88,7 +88,7 @@ export const breakoutSketch = (p) => {
     p.fill(200);
     p.textSize(20);
     p.textStyle(p.NORMAL);
-    p.text("Presiona ENTER o ESPACIO para Iniciar", w / 2, 250);
+    p.text("Presiona ESPACIO para Iniciar", w / 2, 250);
 
     p.fill(120);
     p.textSize(14);
@@ -164,7 +164,7 @@ export const breakoutSketch = (p) => {
     p.textSize(18);
     p.textStyle(p.NORMAL);
     p.text(`Puntuación final: ${score} pts`, w / 2, h / 2 + 20);
-    p.text("Presiona ENTER para volver al menú principal", w / 2, h / 2 + 70);
+    p.text("Presiona ESPACIO para volver al menú principal", w / 2, h / 2 + 70);
   }
 
   function updatePaddleOnly() {
